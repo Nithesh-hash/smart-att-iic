@@ -46,12 +46,14 @@ export default function App() {
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
+    setActiveTab(TABS.REGISTRATION);
     setShowWelcome(true);
   };
 
   const handleAcknowledgeWelcome = () => {
     sessionStorage.setItem('smart_att_seen_welcome', 'true');
     setShowWelcome(false);
+    setActiveTab(TABS.REGISTRATION);
   };
 
   const handleLogout = () => {

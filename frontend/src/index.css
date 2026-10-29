@@ -150,44 +150,48 @@ body {
    -------------------------------------------------------------------------- */
 .center-institutional-branding {
   text-align: center;
-  margin: 28px 0 22px;
+  margin: 18px auto 20px;
+  max-width: 960px;
+  width: 100%;
 }
 
 .logos-row-center {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 24px;
-  margin-bottom: 14px;
+  gap: 32px;
+  margin-bottom: 12px;
 }
 
 .official-vit-logo {
-  height: 58px;
-  max-width: 160px;
+  height: 64px;
+  max-width: 250px;
   object-fit: contain;
 }
 
 .official-iic-logo {
-  height: 58px;
-  max-width: 160px;
+  height: 64px;
+  max-width: 200px;
   object-fit: contain;
 }
 
 .inst-office-text {
-  font-size: 14.5px;
+  font-size: 15.5px;
   color: #1f2937;
-  font-weight: 400;
-  letter-spacing: 0.2px;
+  font-weight: 500;
+  letter-spacing: 0.3px;
   margin: 0 0 6px 0;
+  line-height: 1.4;
 }
 
 .inst-main-title {
-  font-size: 20px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 900;
   color: #000000;
-  letter-spacing: 2px;
+  letter-spacing: 2.5px;
   text-transform: uppercase;
   margin: 0;
+  line-height: 1.3;
 }
 
 /* --------------------------------------------------------------------------
@@ -1699,6 +1703,301 @@ body {
   gap: 4px;
   font-size: 11px;
   color: #6b7280;
+}
+
+/* ==========================================================================
+   EVENT REGISTRATION VALIDATION & SUCCESS MODAL
+   ========================================================================== */
+.field-validation-error {
+  color: #dc2626;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
+.input-error-border {
+  border-color: #dc2626 !important;
+}
+
+.modal-card-registered-success {
+  max-width: 580px;
+  padding: 28px;
+}
+
+.success-modal-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.success-icon-badge {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+}
+
+.success-modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: #15803d;
+  margin-bottom: 6px;
+}
+
+.success-modal-sub {
+  font-size: 13.5px;
+  color: #374151;
+  line-height: 1.4;
+}
+
+.registered-event-details-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  border-bottom: 1px solid #edf2f7;
+  font-size: 13px;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-label {
+  font-weight: 600;
+  color: #475569;
+}
+
+.detail-value {
+  color: #0f172a;
+  font-weight: 500;
+}
+
+.event-type-pill {
+  background: #ede9fe;
+  color: #6d28d9;
+  padding: 2px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.detail-sessions-list {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed #cbd5e1;
+}
+
+.sessions-list-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #190059;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+
+.session-item-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 6px 10px;
+  margin-bottom: 6px;
+}
+
+.session-day-tag {
+  background: #190059;
+  color: #ffffff;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.session-date-tag,
+.session-venue-tag,
+.session-time-tag {
+  color: #334155;
+  font-weight: 500;
+}
+
+.success-modal-actions {
+  display: flex;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   EXCEL SEGREGATION RESULTS CARD (MATCHING IMAGE 4)
+   ========================================================================== */
+.exact-results-card {
+  padding: 4px 0;
+}
+
+.exact-results-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.green-box-check {
+  font-size: 20px;
+}
+
+.results-heading-green {
+  font-size: 19px;
+  font-weight: 800;
+  color: #15803d;
+  margin: 0;
+}
+
+/* Summary Report Banner (Image 4) */
+.exact-summary-report-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #faf5ff;
+  border: 1.5px solid #d8b4fe;
+  border-radius: 8px;
+  padding: 14px 20px;
+  margin-bottom: 22px;
+}
+
+.summary-box-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.summary-doc-icon {
+  font-size: 22px;
+}
+
+.summary-box-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #190059;
+  margin: 0 0 2px 0;
+}
+
+.summary-box-sub {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0;
+}
+
+.btn-download-summary-purple {
+  background: #190059;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.btn-download-summary-purple:hover {
+  background: #2a0880;
+}
+
+/* Results sections */
+.exact-results-section {
+  margin-bottom: 20px;
+}
+
+.results-section-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #111827;
+  margin-bottom: 8px;
+}
+
+.results-link-row {
+  padding-left: 24px;
+}
+
+.exact-download-link-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  font-size: 13.5px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.link-underlined {
+  color: #2563eb;
+  text-decoration: underline;
+  font-weight: 500;
+}
+
+.link-underlined:hover {
+  color: #1d4ed8;
+}
+
+/* Individual Files Tree List (Image 4) */
+.individual-files-tree-list {
+  padding-left: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tree-file-item {
+  display: flex;
+  align-items: center;
+}
+
+.exact-btn-reset-segregate {
+  background: #f3f0ff;
+  color: #190059;
+  border: 1.5px solid #190059;
+  border-radius: 6px;
+  padding: 10px 24px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.exact-btn-reset-segregate:hover {
+  background: #190059;
+  color: #ffffff;
+}
+
+.selected-files-indicator {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.file-chip-name {
+  background: #f3f4f6;
+  border: 1px solid #e5e7eb;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #374151;
 }
 
 .mt-2 { margin-top: 8px; }

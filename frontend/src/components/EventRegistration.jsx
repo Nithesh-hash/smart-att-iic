@@ -1,22 +1,35 @@
 /**
  * Exact Event Registration Component
- * Matches Images 3 & 4 from screenshots:
+ * Matches Images 3 & 4 with enhanced validation & success confirmation popup:
  * - Register New Event (Heading)
  * - Event Name
  * - Faculty Coordinator
  * - School
- * - Phone Number (optional) with placeholder: "10-digit mobile number (optional)"
+ * - Phone Number: Must start with 6 to 9 and have exactly 10 digits
  * - Event Type with dropdown "-- Select Event Type --"
  * - Multi-day Event? with Checkbox
- * - Event Date
+ * - Event Date: Empty by default so user selects date manually
  * - Event Timing with From/To (Hour, Minute, AM/PM dropdowns)
  * - Event Venue with placeholder "Enter venue"
- * - Full-width "Add Event" button (#1a0050)
+ * - Full-width "Add Event" button (#190059)
+ * - Success Modal Popup displaying full registered event details
  */
 
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { addEvent, EVENT_TYPES } from '../services/dataService';
+import { CheckCircle2, Calendar, MapPin, Clock, User, Phone, Building, Layers, X } from 'lucide-react';
+import { addEvent, EVENT_TYPES, SCHOOL_OPTIONS } from '../services/dataService';
+
+// Format YYYY-MM-DD to DD-MM-YYYY
+function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return '';
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr;
+}
 
 export default function EventRegistration({ onEventCreated }) {
   // Form State
@@ -24,11 +37,12 @@ export default function EventRegistration({ onEventCreated }) {
   const [coordinatorName, setCoordinatorName] = useState('');
   const [school, setSchool] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [phoneError, setPhoneError] = useState('');
   const [eventType, setEventType] = useState('');
   const [isMultiDay, setIsMultiDay] = useState(false);
 
-  // Single-Day Schedule
-  const [eventDate, setEventDate] = useState(() => new Date().toISOString().split('T')[0]);
+  // Single-Day Schedule (empty date by default)
+  const [eventDate, setEventDate] = useState('');
   const [fromHour, setFromHour] = useState('1');
   const [fromMinute, setFromMinute] = useState('00');
   const [fromModifier, setFromModifier] = useState('AM');
@@ -39,12 +53,12 @@ export default function EventRegistration({ onEventCreated }) {
 
   const [eventVenue, setEventVenue] = useState('');
 
-  // Multi-Day Schedule Slots
+  // Multi-Day Schedule Slots (empty dates by default)
   const [multiDays, setMultiDays] = useState([
     {
       id: 1,
       dayIndex: 1,
-      date: new Date().toISOString().split('T')[0],
+      date: '',
       venue: '',
       fromHour: '9',
       fromMinute: '00',
@@ -56,7 +70,7 @@ export default function EventRegistration({ onEventCreated }) {
     {
       id: 2,
       dayIndex: 2,
-      date: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+      date: '',
       venue: '',
       fromHour: '9',
       fromMinute: '00',
@@ -70,25 +84,36 @@ export default function EventRegistration({ onEventCreated }) {
   const [feedbackMsg, setFeedbackMsg] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Success Modal State
+  const [successModalEvent, setSuccessModalEvent] = useState(null);
+
   const hoursList = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
   const minutesList = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'];
 
+  // Phone input handler: only numbers, max 10 digits, validation for 6-9
+  const handlePhoneChange = (e) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 10);
+    setPhoneNumber(raw);
+
+    if (raw.length === 0) {
+      setPhoneError('');
+    } else if (!/^[6-9]/.test(raw)) {
+      setPhoneError('Phone number must start with 6, 7, 8, or 9.');
+    } else if (raw.length < 10) {
+      setPhoneError(`10 digits required (${raw.length}/10 entered).`);
+    } else {
+      setPhoneError('');
+    }
+  };
+
   const handleAddMultiDay = () => {
     const nextIdx = multiDays.length + 1;
-    let nextDate = new Date().toISOString().split('T')[0];
-    const lastDate = multiDays[multiDays.length - 1]?.date;
-    if (lastDate) {
-      const d = new Date(lastDate);
-      d.setDate(d.getDate() + 1);
-      nextDate = d.toISOString().split('T')[0];
-    }
-
     setMultiDays([
       ...multiDays,
       {
         id: Date.now(),
         dayIndex: nextIdx,
-        date: nextDate,
+        date: '',
         venue: multiDays[0]?.venue || '',
         fromHour: '9',
         fromMinute: '00',
@@ -130,9 +155,24 @@ export default function EventRegistration({ onEventCreated }) {
       return;
     }
 
+    // Phone validation (if entered, must start with 6-9 and have exactly 10 digits)
+    if (phoneNumber.trim()) {
+      if (!/^[6-9]\d{9}$/.test(phoneNumber.trim())) {
+        setFeedbackMsg({
+          type: 'error',
+          text: 'Contact number must be exactly 10 digits starting with 6, 7, 8, or 9.'
+        });
+        return;
+      }
+    }
+
     let compiledDays = [];
 
     if (!isMultiDay) {
+      if (!eventDate) {
+        setFeedbackMsg({ type: 'error', text: 'Please select the Event Date.' });
+        return;
+      }
       if (!eventVenue.trim()) {
         setFeedbackMsg({ type: 'error', text: 'Please enter the Event Venue.' });
         return;
@@ -150,6 +190,10 @@ export default function EventRegistration({ onEventCreated }) {
     } else {
       for (let i = 0; i < multiDays.length; i++) {
         const d = multiDays[i];
+        if (!d.date) {
+          setFeedbackMsg({ type: 'error', text: `Please select the date for Day ${d.dayIndex}.` });
+          return;
+        }
         if (!d.venue.trim()) {
           setFeedbackMsg({ type: 'error', text: `Please specify the venue for Day ${d.dayIndex}.` });
           return;
@@ -182,24 +226,50 @@ export default function EventRegistration({ onEventCreated }) {
 
       // Trigger Confetti Celebration
       confetti({
-        particleCount: 75,
+        particleCount: 80,
         spread: 60,
         origin: { y: 0.6 }
       });
 
-      setFeedbackMsg({
-        type: 'success',
-        text: `Event "${saved.eventName}" registered successfully!`
-      });
+      // Display Full Success Modal
+      setSuccessModalEvent(saved);
 
       // Reset form fields
       setEventName('');
       setCoordinatorName('');
       setSchool('');
       setPhoneNumber('');
+      setPhoneError('');
       setEventType('');
       setIsMultiDay(false);
+      setEventDate('');
       setEventVenue('');
+      setMultiDays([
+        {
+          id: 1,
+          dayIndex: 1,
+          date: '',
+          venue: '',
+          fromHour: '9',
+          fromMinute: '00',
+          fromModifier: 'AM',
+          toHour: '5',
+          toMinute: '00',
+          toModifier: 'PM'
+        },
+        {
+          id: 2,
+          dayIndex: 2,
+          date: '',
+          venue: '',
+          fromHour: '9',
+          fromMinute: '00',
+          fromModifier: 'AM',
+          toHour: '5',
+          toMinute: '00',
+          toModifier: 'PM'
+        }
+      ]);
 
       if (onEventCreated) onEventCreated(saved);
     } catch (err) {
@@ -253,96 +323,99 @@ export default function EventRegistration({ onEventCreated }) {
             className="exact-form-input"
             value={school}
             onChange={(e) => setSchool(e.target.value)}
-            placeholder=""
+            placeholder="e.g. SCOPE, SENSE, SCORE"
           />
         </div>
 
-        {/* Phone Number (optional) */}
+        {/* Phone Number (optional, 10 digits, starts 6-9) */}
         <div className="exact-form-group">
           <label className="exact-form-label">
-            Phone Number <span className="label-sub-optional">(optional)</span>
+            Phone Number <span className="field-optional">(optional)</span>
           </label>
           <input
             type="tel"
-            className="exact-form-input"
-            placeholder="10-digit mobile number (optional)"
+            className={`exact-form-input ${phoneError ? 'input-error-border' : ''}`}
+            placeholder="10-digit mobile number (starts with 6, 7, 8, or 9)"
             value={phoneNumber}
-            onChange={(e) => setPhoneNumber(e.target.value)}
+            onChange={handlePhoneChange}
+            maxLength={10}
           />
+          {phoneError && (
+            <p className="field-validation-error">{phoneError}</p>
+          )}
         </div>
 
         {/* Event Type */}
         <div className="exact-form-group">
           <label className="exact-form-label">Event Type</label>
-          <select
-            className="exact-form-input"
-            value={eventType}
-            onChange={(e) => setEventType(e.target.value)}
-            required
-          >
-            <option value="">-- Select Event Type --</option>
-            {EVENT_TYPES.map(type => (
-              <option key={type} value={type}>{type}</option>
-            ))}
-          </select>
+          <div className="exact-select-wrapper">
+            <select
+              className="exact-form-select"
+              value={eventType}
+              onChange={(e) => setEventType(e.target.value)}
+              required
+            >
+              <option value="">-- Select Event Type --</option>
+              {EVENT_TYPES.map(t => (
+                <option key={t} value={t}>{t}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        {/* Multi-day Event? Checkbox */}
+        {/* Multi-day Event Toggle */}
         <div className="exact-checkbox-group">
           <label className="exact-checkbox-label">
-            Multi-day Event?
+            <span>Multi-day Event?</span>
+            <input
+              type="checkbox"
+              className="exact-checkbox-input"
+              checked={isMultiDay}
+              onChange={(e) => setIsMultiDay(e.target.checked)}
+            />
           </label>
-          <input
-            type="checkbox"
-            className="exact-checkbox-input"
-            checked={isMultiDay}
-            onChange={(e) => setIsMultiDay(e.target.checked)}
-          />
         </div>
 
-        {/* Single-Day View */}
-        {!isMultiDay ? (
-          <div className="exact-single-day-section">
+        {/* SINGLE DAY SCHEDULE (Empty date by default) */}
+        {!isMultiDay && (
+          <div className="single-day-section">
             <div className="exact-form-group">
               <label className="exact-form-label">Event Date</label>
               <input
                 type="date"
-                className="exact-form-input"
+                className="exact-form-input exact-date-picker"
                 value={eventDate}
                 onChange={(e) => setEventDate(e.target.value)}
                 required
               />
             </div>
 
+            {/* Event Timing */}
             <div className="exact-form-group">
               <label className="exact-form-label">Event Timing</label>
-              <div className="exact-timing-container">
+              <div className="timing-dropdowns-row">
                 {/* From Group */}
-                <div className="exact-timing-col">
-                  <span className="timing-label-sub">From</span>
-                  <div className="timing-dropdowns-row">
+                <div className="timing-group">
+                  <span className="timing-sublabel">From</span>
+                  <div className="timing-selects-triple">
                     <select
-                      className="exact-select-mini"
+                      className="exact-timing-select"
                       value={fromHour}
                       onChange={(e) => setFromHour(e.target.value)}
                     >
-                      {hoursList.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
+                      {hoursList.map(h => <option key={h} value={h}>{h}</option>)}
                     </select>
 
                     <select
-                      className="exact-select-mini"
+                      className="exact-timing-select"
                       value={fromMinute}
                       onChange={(e) => setFromMinute(e.target.value)}
                     >
-                      {minutesList.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
+                      {minutesList.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
 
                     <select
-                      className="exact-select-mini"
+                      className="exact-timing-select"
                       value={fromModifier}
                       onChange={(e) => setFromModifier(e.target.value)}
                     >
@@ -353,31 +426,27 @@ export default function EventRegistration({ onEventCreated }) {
                 </div>
 
                 {/* To Group */}
-                <div className="exact-timing-col">
-                  <span className="timing-label-sub">To</span>
-                  <div className="timing-dropdowns-row">
+                <div className="timing-group">
+                  <span className="timing-sublabel">To</span>
+                  <div className="timing-selects-triple">
                     <select
-                      className="exact-select-mini"
+                      className="exact-timing-select"
                       value={toHour}
                       onChange={(e) => setToHour(e.target.value)}
                     >
-                      {hoursList.map(h => (
-                        <option key={h} value={h}>{h}</option>
-                      ))}
+                      {hoursList.map(h => <option key={h} value={h}>{h}</option>)}
                     </select>
 
                     <select
-                      className="exact-select-mini"
+                      className="exact-timing-select"
                       value={toMinute}
                       onChange={(e) => setToMinute(e.target.value)}
                     >
-                      {minutesList.map(m => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
+                      {minutesList.map(m => <option key={m} value={m}>{m}</option>)}
                     </select>
 
                     <select
-                      className="exact-select-mini"
+                      className="exact-timing-select"
                       value={toModifier}
                       onChange={(e) => setToModifier(e.target.value)}
                     >
@@ -389,6 +458,7 @@ export default function EventRegistration({ onEventCreated }) {
               </div>
             </div>
 
+            {/* Event Venue */}
             <div className="exact-form-group">
               <label className="exact-form-label">Event Venue</label>
               <input
@@ -401,71 +471,61 @@ export default function EventRegistration({ onEventCreated }) {
               />
             </div>
           </div>
-        ) : (
-          /* Multi-Day View */
-          <div className="exact-multiday-section">
-            {multiDays.map((dayItem) => (
-              <div key={dayItem.id} className="exact-multiday-card">
-                <div className="multiday-header-bar">
-                  <span className="multiday-day-badge">Day {dayItem.dayIndex}</span>
+        )}
+
+        {/* MULTI DAY SCHEDULE */}
+        {isMultiDay && (
+          <div className="multi-days-container">
+            {multiDays.map((d) => (
+              <div key={d.id} className="multi-day-slot-card">
+                <div className="multi-day-header">
+                  <span className="day-slot-title">Day {d.dayIndex} Schedule</span>
                   {multiDays.length > 2 && (
                     <button
                       type="button"
-                      className="btn-multiday-remove"
-                      onClick={() => handleRemoveMultiDay(dayItem.id)}
+                      className="btn-remove-day-link"
+                      onClick={() => handleRemoveMultiDay(d.id)}
                     >
-                      Remove
+                      Remove Day
                     </button>
                   )}
                 </div>
 
-                <div className="exact-form-group mt-2">
+                <div className="exact-form-group">
                   <label className="exact-form-label">Date</label>
                   <input
                     type="date"
-                    className="exact-form-input"
-                    value={dayItem.date}
-                    onChange={(e) => handleMultiDayChange(dayItem.id, 'date', e.target.value)}
-                    required
-                  />
-                </div>
-
-                <div className="exact-form-group">
-                  <label className="exact-form-label">Venue</label>
-                  <input
-                    type="text"
-                    className="exact-form-input"
-                    placeholder="Enter venue"
-                    value={dayItem.venue}
-                    onChange={(e) => handleMultiDayChange(dayItem.id, 'venue', e.target.value)}
+                    className="exact-form-input exact-date-picker"
+                    value={d.date}
+                    onChange={(e) => handleMultiDayChange(d.id, 'date', e.target.value)}
                     required
                   />
                 </div>
 
                 <div className="exact-form-group">
                   <label className="exact-form-label">Timing</label>
-                  <div className="exact-timing-container">
-                    <div className="exact-timing-col">
-                      <span className="timing-label-sub">From</span>
-                      <div className="timing-dropdowns-row">
+                  <div className="timing-dropdowns-row">
+                    <div className="timing-group">
+                      <span className="timing-sublabel">From</span>
+                      <div className="timing-selects-triple">
                         <select
-                          className="exact-select-mini"
-                          value={dayItem.fromHour}
-                          onChange={(e) => handleMultiDayChange(dayItem.id, 'fromHour', e.target.value)}
+                          className="exact-timing-select"
+                          value={d.fromHour}
+                          onChange={(e) => handleMultiDayChange(d.id, 'fromHour', e.target.value)}
                         >
                           {hoursList.map(h => <option key={h} value={h}>{h}</option>)}
                         </select>
                         <select
-                          className="exact-select-mini"
-                          value={dayItem.fromMinute}
-                          onChange={(e) => handleMultiDayChange(dayItem.id, 'fromMinute', e.target.value)}
+                          className="exact-timing-select"
+                          value={d.fromMinute}
+                          onChange={(e) => handleMultiDayChange(d.id, 'fromMinute', e.target.value)}
                         >
                           {minutesList.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         <select
-                          className="exact-select-mini"
-                          value={dayItem.fromModifier}
-                          onChange={(e) => handleMultiDayChange(dayItem.id, 'fromModifier', e.target.value)}
+                          className="exact-timing-select"
+                          value={d.fromModifier}
+                          onChange={(e) => handleMultiDayChange(d.id, 'fromModifier', e.target.value)}
                         >
                           <option value="AM">AM</option>
                           <option value="PM">PM</option>
@@ -473,27 +533,27 @@ export default function EventRegistration({ onEventCreated }) {
                       </div>
                     </div>
 
-                    <div className="exact-timing-col">
-                      <span className="timing-label-sub">To</span>
-                      <div className="timing-dropdowns-row">
+                    <div className="timing-group">
+                      <span className="timing-sublabel">To</span>
+                      <div className="timing-selects-triple">
                         <select
-                          className="exact-select-mini"
-                          value={dayItem.toHour}
-                          onChange={(e) => handleMultiDayChange(dayItem.id, 'toHour', e.target.value)}
+                          className="exact-timing-select"
+                          value={d.toHour}
+                          onChange={(e) => handleMultiDayChange(d.id, 'toHour', e.target.value)}
                         >
                           {hoursList.map(h => <option key={h} value={h}>{h}</option>)}
                         </select>
                         <select
-                          className="exact-select-mini"
-                          value={dayItem.toMinute}
-                          onChange={(e) => handleMultiDayChange(dayItem.id, 'toMinute', e.target.value)}
+                          className="exact-timing-select"
+                          value={d.toMinute}
+                          onChange={(e) => handleMultiDayChange(d.id, 'toMinute', e.target.value)}
                         >
                           {minutesList.map(m => <option key={m} value={m}>{m}</option>)}
                         </select>
                         <select
-                          className="exact-select-mini"
-                          value={dayItem.toModifier}
-                          onChange={(e) => handleMultiDayChange(dayItem.id, 'toModifier', e.target.value)}
+                          className="exact-timing-select"
+                          value={d.toModifier}
+                          onChange={(e) => handleMultiDayChange(d.id, 'toModifier', e.target.value)}
                         >
                           <option value="AM">AM</option>
                           <option value="PM">PM</option>
@@ -502,15 +562,27 @@ export default function EventRegistration({ onEventCreated }) {
                     </div>
                   </div>
                 </div>
+
+                <div className="exact-form-group">
+                  <label className="exact-form-label">Venue</label>
+                  <input
+                    type="text"
+                    className="exact-form-input"
+                    placeholder="Enter venue for this day"
+                    value={d.venue}
+                    onChange={(e) => handleMultiDayChange(d.id, 'venue', e.target.value)}
+                    required
+                  />
+                </div>
               </div>
             ))}
 
             <button
               type="button"
-              className="btn-add-day-pill"
+              className="btn-add-day-outline"
               onClick={handleAddMultiDay}
             >
-              + Add Day Slot
+              + Add Another Day
             </button>
           </div>
         )}
@@ -522,10 +594,79 @@ export default function EventRegistration({ onEventCreated }) {
             className="exact-btn-submit"
             disabled={isSubmitting}
           >
-            {isSubmitting ? 'Adding Event...' : 'Add Event'}
+            {isSubmitting ? 'Registering Event...' : 'Add Event'}
           </button>
         </div>
       </form>
+
+      {/* SUCCESS CONFIRMATION MODAL */}
+      {successModalEvent && (
+        <div className="modal-backdrop">
+          <div className="modal-card modal-card-registered-success">
+            <div className="success-modal-header">
+              <div className="success-icon-badge">
+                <CheckCircle2 size={36} color="#16a34a" />
+              </div>
+              <h3 className="success-modal-title">Event Successfully Registered!</h3>
+              <p className="success-modal-sub">
+                <strong>"{successModalEvent.eventName}"</strong> has been successfully registered in the portal database.
+              </p>
+            </div>
+
+            {/* Event Summary Details Card */}
+            <div className="registered-event-details-card">
+              <div className="detail-row">
+                <span className="detail-label">Faculty Coordinator:</span>
+                <span className="detail-value">{successModalEvent.coordinatorName}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Organizing School:</span>
+                <span className="detail-value">{successModalEvent.school || 'SCOPE'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Contact Number:</span>
+                <span className="detail-value">{successModalEvent.phoneNumber || '–'}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Event Type:</span>
+                <span className="detail-value event-type-pill">{successModalEvent.eventType}</span>
+              </div>
+              <div className="detail-row">
+                <span className="detail-label">Schedule Mode:</span>
+                <span className="detail-value">
+                  {successModalEvent.isMultiDay
+                    ? `Multi-day Event (${successModalEvent.days?.length} Days)`
+                    : 'Single-Day Event'}
+                </span>
+              </div>
+
+              {/* Sessions breakdown */}
+              <div className="detail-sessions-list">
+                <div className="sessions-list-title">Scheduled Sessions:</div>
+                {successModalEvent.days?.map((d, dIdx) => (
+                  <div key={dIdx} className="session-item-row">
+                    <span className="session-day-tag">Day {d.dayIndex}</span>
+                    <span className="session-date-tag">📅 {formatDateDDMMYYYY(d.date)}</span>
+                    <span className="session-venue-tag">📍 {d.venue}</span>
+                    <span className="session-time-tag">🕒 {d.startTime} – {d.endTime}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="success-modal-actions">
+              <button
+                type="button"
+                className="exact-btn-submit"
+                style={{ padding: '10px 24px', fontSize: '14px' }}
+                onClick={() => setSuccessModalEvent(null)}
+              >
+                Done / Register Another Event
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

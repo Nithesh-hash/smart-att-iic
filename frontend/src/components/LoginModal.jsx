@@ -26,7 +26,7 @@ export default function LoginModal({ onLoginSuccess }) {
     if (
       (username.toLowerCase() === 'admin' && password === 'admin123') ||
       (username.toLowerCase() === 'vit' && password === 'vit2026') ||
-      password.length >= 6
+      password.length >= 4
     ) {
       const user = {
         username,
@@ -37,14 +37,8 @@ export default function LoginModal({ onLoginSuccess }) {
       sessionStorage.setItem('smart_att_user', JSON.stringify(user));
       onLoginSuccess(user);
     } else {
-      setError('Invalid credentials. (Demo: admin / admin123)');
+      setError('Invalid username or password.');
     }
-  };
-
-  const handleQuickDemo = () => {
-    setUsername('admin');
-    setPassword('admin123');
-    setError('');
   };
 
   return (
@@ -99,16 +93,6 @@ export default function LoginModal({ onLoginSuccess }) {
             Sign In
           </button>
         </form>
-
-        <div className="login-card-footer">
-          <button
-            type="button"
-            className="btn-demo-link"
-            onClick={handleQuickDemo}
-          >
-            Quick-Fill Demo Credentials (admin / admin123)
-          </button>
-        </div>
       </div>
     </div>
   );

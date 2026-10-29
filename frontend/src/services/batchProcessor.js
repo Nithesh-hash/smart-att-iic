@@ -220,6 +220,7 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
 
   // Generate Styled School Excel Workbooks using ExcelJS
   const zip = new JSZip();
+  const generatedSchoolFiles = [];
 
   for (const [schoolName, eventBlocks] of schoolsMap.entries()) {
     const wb = new ExcelJS.Workbook();
@@ -283,9 +284,25 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
       ws.getColumn(c).width = 18;
     }
 
+    const now = new Date();
+    const dateTag = eventSlots[0]?.event?.days?.[0]?.date || now.toISOString().split('T')[0];
+    const schoolFileName = `${schoolName}_${dateTag}.xlsx`;
+
     const buf = await wb.xlsx.writeBuffer();
-    zip.file(`${schoolName}.xlsx`, buf);
+    const schoolBlob = new Blob([buf], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    });
+
+    zip.file(schoolFileName, buf);
+    generatedSchoolFiles.push({
+      schoolName,
+      fileName: schoolFileName,
+      blob: schoolBlob
+    });
   }
+
+  // Sort generated school files alphabetically
+  generatedSchoolFiles.sort((a, b) => a.schoolName.localeCompare(b.schoolName));
 
   // Generate Text Summary Report
   const summaryLines = [];
@@ -323,7 +340,8 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
   summaryLines.push(`  TOTAL SCHOOL WORKBOOKS   : ${schoolsMap.size}`);
   summaryLines.push('================================================================');
 
-  zip.file('BATCH_SEGREGATION_SUMMARY.txt', summaryLines.join('\n'));
+  const summaryContent = summaryLines.join('\n');
+  zip.file('BATCH_SEGREGATION_SUMMARY.txt', summaryContent);
 
   const zipBlob = await zip.generateAsync({
     type: 'blob',
@@ -331,8 +349,17 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
     compressionOptions: { level: 6 }
   });
 
+  const now = new Date();
+  const dateTag = eventSlots[0]?.event?.days?.[0]?.date || now.toISOString().split('T')[0];
+  const timeTag = now.toTimeString().split(' ')[0].replace(/:/g, '');
+  const zipFileName = `all_schools_${dateTag}_${timeTag}.zip`;
+
   return {
     blob: zipBlob,
+    zipName: zipFileName,
+    dateTag,
+    summaryText: summaryContent,
+    schoolFiles: generatedSchoolFiles,
     schoolsCount: schoolsMap.size,
     totalStudents: grandTotalStudents,
     totalFiles: totalFilesProcessed,
