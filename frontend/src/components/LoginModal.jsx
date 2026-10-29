@@ -23,15 +23,14 @@ export default function LoginModal({ onLoginSuccess }) {
       return;
     }
 
-    if (
-      (username.toLowerCase() === 'admin' && password === 'admin123') ||
-      (username.toLowerCase() === 'vit' && password === 'vit2026') ||
-      password.length >= 4
-    ) {
+    const validUsername = import.meta.env.VITE_AUTH_USERNAME || 'Attendance';
+    const validPassword = import.meta.env.VITE_AUTH_PASSWORD || 'SPM@123';
+
+    if (username.trim() === validUsername && password === validPassword) {
       const user = {
-        username,
-        name: username.toUpperCase() === 'ADMIN' ? 'Attendance' : username,
-        role: 'Faculty / Administrator',
+        username: validUsername,
+        name: 'Attendance',
+        role: 'VIT-IST Admin',
         loggedInAt: new Date().toISOString()
       };
       sessionStorage.setItem('smart_att_user', JSON.stringify(user));
