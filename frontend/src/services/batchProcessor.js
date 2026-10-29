@@ -339,3 +339,4 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
     eventsCount: eventSlots.length
   };
 }
+

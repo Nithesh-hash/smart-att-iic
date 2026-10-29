@@ -417,3 +417,4 @@ function getInitialMockHistory() {
     }
   ];
 }
+

@@ -192,3 +192,4 @@ export default function FirebaseSettingsModal({ onClose, onConfigSaved }) {
     </div>
   );
 }
+

@@ -77,3 +77,4 @@ export function getDb() {
 export function resetDbConnection() {
   cachedDb = null;
 }
+

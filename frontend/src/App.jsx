@@ -1,25 +1,24 @@
 /**
  * Smart Attendance & Event Management Portal
- * Root Application Orchestrator
- *
- * Modules Mounted:
- * 1. ⚡ Quick Segregation (Our standalone direct spreadsheet segregation engine)
- * 2. 📅 Event Registration (Single & Multi-day scheduling with validation)
- * 3. 📑 Multi-Event Batch Segregation (Slot allocation & SheetJS multi-day processing)
- * 4. 🛡️ Admin & Analytics Panel (Events Management, Audit Trail, Chart.js & jsPDF)
+ * Matches the official VIT-IST institutional design from screenshots:
+ * - Exact Login Screen (Image 1)
+ * - Exact Welcome Modal "Please read this page!" (Image 2)
+ * - Exact Centered Navigation & "Register New Event" form (Images 3 & 4)
+ * - Exact "Excel Segregation" Step 1 & multi-event batch workflow (Image 5)
+ * - Plus Quick Segregation & Admin Analytics Panel
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import Header from './components/Header';
 import Navigation, { TABS } from './components/Navigation';
 import LoginModal from './components/LoginModal';
-import DeveloperBadge from './components/DeveloperBadge';
+import WelcomeModal from './components/WelcomeModal';
 import RulesModal from './components/RulesModal';
 import FirebaseSettingsModal from './components/FirebaseSettingsModal';
 
-import QuickSegregation from './components/QuickSegregation';
 import EventRegistration from './components/EventRegistration';
 import MultiEventBatch from './components/MultiEventBatch';
+import QuickSegregation from './components/QuickSegregation';
 import AdminPanel from './components/admin/AdminPanel';
 
 export default function App() {
@@ -33,58 +32,71 @@ export default function App() {
     }
   });
 
-  // Active Tab
-  const [activeTab, setActiveTab] = useState(TABS.QUICK);
+  // Welcome Modal (Shows on initial session if not previously acknowledged)
+  const [showWelcome, setShowWelcome] = useState(() => {
+    return !sessionStorage.getItem('smart_att_seen_welcome');
+  });
 
-  // Modals
+  // Active Navigation Tab
+  const [activeTab, setActiveTab] = useState(TABS.REGISTRATION);
+
+  // Aux Modals
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isCloudSettingsOpen, setIsCloudSettingsOpen] = useState(false);
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    setShowWelcome(true);
+  };
+
+  const handleAcknowledgeWelcome = () => {
+    sessionStorage.setItem('smart_att_seen_welcome', 'true');
+    setShowWelcome(false);
+  };
+
   const handleLogout = () => {
     sessionStorage.removeItem('smart_att_user');
+    sessionStorage.removeItem('smart_att_seen_welcome');
     setCurrentUser(null);
   };
 
   return (
-    <div className="portal-root-wrapper">
-      {/* Institutional Authentication Gate */}
+    <div className="exact-portal-wrapper">
+      {/* 1. Login Screen (Image 1) */}
       {!currentUser && (
-        <LoginModal onLoginSuccess={(user) => setCurrentUser(user)} />
+        <LoginModal onLoginSuccess={handleLoginSuccess} />
       )}
 
-      {/* Main Portal View */}
+      {/* 2. Authenticated Portal View */}
       {currentUser && (
-        <div className="portal-main-layout">
-          {/* Top Institutional Header */}
+        <div className="portal-page-container">
+          {/* Official Institutional Header */}
           <Header
             currentUser={currentUser}
             onOpenRules={() => setIsRulesOpen(true)}
             onOpenCloudSettings={() => setIsCloudSettingsOpen(true)}
+            onSelectTab={(tab) => setActiveTab(tab)}
             onLogout={handleLogout}
           />
 
-          {/* Module Navigation Tabs */}
+          {/* Centered Deep Purple Navigation Bar */}
           <Navigation
             activeTab={activeTab}
             onTabChange={(tab) => setActiveTab(tab)}
           />
 
-          {/* Main Tab View Area */}
-          <main className="portal-content-container">
-            {activeTab === TABS.QUICK && (
-              <QuickSegregation />
-            )}
-
+          {/* Main Card View matching active tab */}
+          <main className="portal-content-body">
             {activeTab === TABS.REGISTRATION && (
-              <EventRegistration
-                onEventCreated={() => {
-                  // Optionally switch or notify
-                }}
-              />
+              <EventRegistration />
             )}
 
             {activeTab === TABS.BATCH && (
               <MultiEventBatch />
+            )}
+
+            {activeTab === TABS.QUICK && (
+              <QuickSegregation />
             )}
 
             {activeTab === TABS.ADMIN && (
@@ -92,20 +104,10 @@ export default function App() {
             )}
           </main>
 
-          {/* Institutional Footer */}
-          <footer className="portal-institutional-footer">
-            <div className="footer-content">
-              <p className="footer-copyright">
-                © {new Date().getFullYear()} VIT-IST • Office of Innovation, Startup & Technology Transfer
-              </p>
-              <p className="footer-tagline">
-                Institutional Smart Attendance & Multi-Event Departmental Segregator
-              </p>
-            </div>
-          </footer>
-
-          {/* Floating Developer Credits Badge */}
-          <DeveloperBadge />
+          {/* Welcome Modal (Image 2) */}
+          {showWelcome && (
+            <WelcomeModal onConfirm={handleAcknowledgeWelcome} />
+          )}
 
           {/* Rules & Guide Modal */}
           {isRulesOpen && (
@@ -116,9 +118,6 @@ export default function App() {
           {isCloudSettingsOpen && (
             <FirebaseSettingsModal
               onClose={() => setIsCloudSettingsOpen(false)}
-              onConfigSaved={() => {
-                // Rerender / refresh connection status
-              }}
             />
           )}
         </div>

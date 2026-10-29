@@ -1,123 +1,112 @@
 /**
- * Institutional Authentication Gate Component
- * Secure login with sessionStorage session restoration and a 1-click Demo Fill button.
+ * Exact Institutional Login Screen Component
+ * Matches Image 1 from screenshots:
+ * - Centered institutional branding (VIT + IIC logos)
+ * - Office of Innovation, Startup and Technology Transfer (VIT-IST)
+ * - SMART ATTENDANCE SEGREGATOR
+ * - White Card with "Login", Username, Password, and "Sign In" button
  */
 
 import React, { useState } from 'react';
-import {
-  Lock,
-  User,
-  KeyRound,
-  ShieldAlert,
-  ArrowRight,
-  Sparkles,
-  Building2
-} from 'lucide-react';
 
 export default function LoginModal({ onLoginSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  const handleLogin = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
     setError('');
 
     if (!username.trim() || !password.trim()) {
-      setError('Please enter both your institutional username and password.');
+      setError('Please enter both username and password.');
       return;
     }
 
-    // Default institutional administrator credentials check
-    // (Accepts 'admin' / 'admin123' or 'vit' / 'vit2026' or any authenticated faculty)
     if (
       (username.toLowerCase() === 'admin' && password === 'admin123') ||
       (username.toLowerCase() === 'vit' && password === 'vit2026') ||
-      (password.length >= 6) // Institutional flexible faculty login
+      password.length >= 6
     ) {
-      const userObj = {
+      const user = {
         username,
-        name: username.toUpperCase() === 'ADMIN' ? 'Institutional Administrator' : `Faculty (${username})`,
-        role: 'Faculty / Admin',
+        name: username.toUpperCase() === 'ADMIN' ? 'Attendance' : username,
+        role: 'Faculty / Administrator',
         loggedInAt: new Date().toISOString()
       };
-      sessionStorage.setItem('smart_att_user', JSON.stringify(userObj));
-      onLoginSuccess(userObj);
+      sessionStorage.setItem('smart_att_user', JSON.stringify(user));
+      onLoginSuccess(user);
     } else {
-      setError('Invalid credentials. You can use the Quick Demo Fill button below.');
+      setError('Invalid credentials. (Demo: admin / admin123)');
     }
   };
 
-  const handleQuickDemoFill = () => {
+  const handleQuickDemo = () => {
     setUsername('admin');
     setPassword('admin123');
     setError('');
   };
 
   return (
-    <div className="login-overlay-backdrop">
-      <div className="login-modal-card">
-        <div className="login-modal-header">
-          <div className="login-icon-badge">
-            <Building2 size={32} className="login-badge-icon" />
-          </div>
-          <h2 className="login-title">Institutional Portal Access</h2>
-          <p className="login-subtitle">
-            Office of Innovation, Startup & Technology Transfer (VIT-IST)
-          </p>
+    <div className="login-page-screen">
+      {/* Top Branding Section */}
+      <div className="center-institutional-branding mb-6">
+        <div className="logos-row-center">
+          <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
+          <img src="/iic-logo.png" alt="IIC Logo" className="official-iic-logo" />
         </div>
+        <p className="inst-office-text">
+          Office of Innovation, Startup and Technology Transfer (VIT-IST)
+        </p>
+        <h1 className="inst-main-title">
+          SMART ATTENDANCE SEGREGATOR
+        </h1>
+      </div>
+
+      {/* Login Card */}
+      <div className="exact-login-card">
+        <h2 className="login-card-title">Login</h2>
 
         {error && (
-          <div className="login-error-alert">
-            <ShieldAlert size={16} />
-            <span>{error}</span>
+          <div className="login-error-text">
+            {error}
           </div>
         )}
 
-        <form onSubmit={handleLogin} className="login-form">
-          <div className="form-group">
-            <label className="form-label">Institutional Username / ID</label>
-            <div className="input-icon-wrapper">
-              <User size={18} className="field-icon" />
-              <input
-                type="text"
-                className="form-input"
-                placeholder="e.g. admin or faculty_id"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                autoFocus
-              />
-            </div>
+        <form onSubmit={handleSubmit} className="login-form-inner">
+          <div className="login-input-group">
+            <input
+              type="text"
+              className="exact-form-input"
+              placeholder="Username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoFocus
+            />
           </div>
 
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <div className="input-icon-wrapper">
-              <KeyRound size={18} className="field-icon" />
-              <input
-                type="password"
-                className="form-input"
-                placeholder="Enter password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-              />
-            </div>
+          <div className="login-input-group">
+            <input
+              type="password"
+              className="exact-form-input"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
           </div>
 
-          <button type="submit" className="btn-login-submit">
-            <span>Sign In to Portal</span>
-            <ArrowRight size={18} />
+          <button type="submit" className="exact-btn-signin">
+            Sign In
           </button>
         </form>
 
-        <div className="login-footer-actions">
+        <div className="login-card-footer">
           <button
             type="button"
-            className="btn-quick-demo-fill"
-            onClick={handleQuickDemoFill}
+            className="btn-demo-link"
+            onClick={handleQuickDemo}
           >
-            <Sparkles size={14} />
-            <span>Quick-Fill Demo Credentials (admin / admin123)</span>
+            Quick-Fill Demo Credentials (admin / admin123)
           </button>
         </div>
       </div>

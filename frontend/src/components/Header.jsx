@@ -1,17 +1,21 @@
 /**
- * Institutional Header Component
- * Displays VIT-IST official branding, active authenticated user indicator,
- * Cloud settings trigger, Rules & instructions modal trigger, and Logout.
+ * Exact Institutional Header Component
+ * Matches the official VIT-IST layout from screenshots:
+ * - Top-right user menu with VIT avatar and "Attendance ▾" dropdown
+ * - Centered VIT and IIC logos side by side
+ * - Office of Innovation, Startup and Technology Transfer (VIT-IST)
+ * - SMART ATTENDANCE SEGREGATOR
  */
 
-import React from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
-  FileSpreadsheet,
+  LogOut,
+  Settings,
   BookOpen,
   Database,
-  LogOut,
-  UserCheck,
-  Sparkles
+  User,
+  Zap,
+  CheckCircle2
 } from 'lucide-react';
 import { isUsingFirebase } from '../services/dataService';
 
@@ -19,91 +23,118 @@ export default function Header({
   currentUser,
   onOpenRules,
   onOpenCloudSettings,
+  onSelectTab,
   onLogout
 }) {
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
   const isCloudConnected = isUsingFirebase();
 
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   return (
-    <header className="institutional-header">
-      {/* Official Branding Banner Image */}
-      <div className="header-banner-wrapper">
-        <img
-          src="/header-banner.png"
-          alt="VIT - Office of Innovation, Startup & Technology Transfer (VIT-IST)"
-          className="header-banner-image"
-          onError={(e) => {
-            // Graceful fallback if banner image fails
-            e.currentTarget.style.display = 'none';
-          }}
-        />
-      </div>
-
-      <div className="header-meta-bar">
-        <div className="header-title-container">
-          <div className="header-logo-badge">
-            <FileSpreadsheet size={24} className="portal-logo-icon" />
-          </div>
-          <div>
-            <h1 className="header-portal-title">
-              Smart Attendance & Event Management Portal
-            </h1>
-            <p className="header-portal-subtitle">
-              Office of Innovation, Startup & Technology Transfer (VIT-IST)
-            </p>
-          </div>
-        </div>
-
-        <div className="header-actions-group">
-          {/* Cloud Storage Status Pill */}
-          <div
-            className={`cloud-status-indicator ${isCloudConnected ? 'status-cloud' : 'status-local'}`}
-            onClick={onOpenCloudSettings}
-            title={isCloudConnected ? 'Connected to Firebase Firestore' : 'Operating in LocalStorage Mode (Click to configure Firebase)'}
-          >
-            <span className="status-dot"></span>
-            <Database size={14} />
-            <span className="status-label">
-              {isCloudConnected ? 'Firestore Active' : 'Offline / LocalStorage'}
-            </span>
-          </div>
-
-          {/* Rules & Instructions */}
+    <header className="exact-portal-header">
+      {/* Top-Right User Profile & Tools Menu */}
+      {currentUser && (
+        <div className="top-right-user-menu" ref={dropdownRef}>
           <button
-            className="btn-header-action"
-            onClick={onOpenRules}
-            title="Read Rules & Instructions"
+            type="button"
+            className="user-profile-btn"
+            onClick={() => setDropdownOpen(!dropdownOpen)}
           >
-            <BookOpen size={16} />
-            <span className="hide-on-mobile">Rules & Guide</span>
+            <div className="user-circle-logo">
+              <img src="/vit-logo.png" alt="VIT Logo" className="vit-circle-img" />
+            </div>
+            <span className="user-profile-name">Attendance</span>
+            <span className="dropdown-caret">▾</span>
           </button>
 
-          {/* Firebase Settings */}
-          <button
-            className="btn-header-action"
-            onClick={onOpenCloudSettings}
-            title="Cloud & Database Settings"
-          >
-            <Database size={16} />
-            <span className="hide-on-mobile">Cloud Settings</span>
-          </button>
-
-          {/* Authenticated User Badge & Logout */}
-          {currentUser && (
-            <div className="user-session-badge">
-              <div className="user-avatar-tag">
-                <UserCheck size={14} />
-                <span>{currentUser.name || currentUser.username || 'Administrator'}</span>
+          {dropdownOpen && (
+            <div className="user-dropdown-menu">
+              <div className="dropdown-user-header">
+                <strong>{currentUser.name || 'Institutional Admin'}</strong>
+                <span className="dropdown-user-sub">
+                  {isCloudConnected ? '🟢 Firestore Active' : '⚪ Offline / LocalStorage'}
+                </span>
               </div>
+
+              <div className="dropdown-divider"></div>
+
               <button
-                className="btn-header-logout"
-                onClick={onLogout}
-                title="Sign Out of Session"
+                type="button"
+                className="dropdown-item"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onSelectTab) onSelectTab('quick');
+                }}
               >
-                <LogOut size={16} />
+                <Zap size={15} />
+                <span>Quick Segregation Engine</span>
+              </button>
+
+              <button
+                type="button"
+                className="dropdown-item"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onOpenRules) onOpenRules();
+                }}
+              >
+                <BookOpen size={15} />
+                <span>Rules & Instructions</span>
+              </button>
+
+              <button
+                type="button"
+                className="dropdown-item"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onOpenCloudSettings) onOpenCloudSettings();
+                }}
+              >
+                <Database size={15} />
+                <span>Cloud & Database Settings</span>
+              </button>
+
+              <div className="dropdown-divider"></div>
+
+              <button
+                type="button"
+                className="dropdown-item dropdown-item-logout"
+                onClick={() => {
+                  setDropdownOpen(false);
+                  if (onLogout) onLogout();
+                }}
+              >
+                <LogOut size={15} />
+                <span>Sign Out</span>
               </button>
             </div>
           )}
         </div>
+      )}
+
+      {/* Centered Institutional Logos and Titles */}
+      <div className="center-institutional-branding">
+        <div className="logos-row-center">
+          <img src="/vit-logo.png" alt="Vellore Institute of Technology" className="official-vit-logo" />
+          <img src="/iic-logo.png" alt="Institution's Innovation Council" className="official-iic-logo" />
+        </div>
+        <p className="inst-office-text">
+          Office of Innovation, Startup and Technology Transfer (VIT-IST)
+        </p>
+        <h1 className="inst-main-title">
+          SMART ATTENDANCE SEGREGATOR
+        </h1>
       </div>
     </header>
   );

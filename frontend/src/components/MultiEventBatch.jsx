@@ -1,35 +1,19 @@
 /**
- * Module 2: Advanced Multi-Event Batch Segregation Engine
- * 4-Step Guided Workflow:
- * 1. Date Range Filter
- * 2. Dynamic Event Slot Creator
- * 3. Daily Drag-and-Drop Spreadsheet Zones
- * 4. In-Memory SheetJS Extraction, Time Normalization, and ZIP Packaging
+ * Exact Excel Segregation Component
+ * Matches Image 5 from screenshots:
+ * - Excel Segregation (Heading)
+ * - Step 1 — Select Date Range
+ * - [ dd-mm-yyyy ] to [ dd-mm-yyyy ] [ 🔍 Find Events ] button
+ * - Followed by Event Slot selection, Daily Spreadsheets Upload, and ZIP generation
  */
 
 import React, { useState, useEffect } from 'react';
-import {
-  Layers,
-  Calendar,
-  Filter,
-  UploadCloud,
-  FileSpreadsheet,
-  Download,
-  CheckCircle2,
-  AlertTriangle,
-  RefreshCw,
-  Plus,
-  Trash2,
-  Clock,
-  Sparkles,
-  ArrowRight,
-  X
-} from 'lucide-react';
+import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle, RefreshCw, X, Layers } from 'lucide-react';
 import { getEvents, addSegregationHistory } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
 
 export default function MultiEventBatch() {
-  // Step 1: Date Range Filter
+  // Step 1: Date Range Filter (Exact UI from Screenshot 5)
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -43,30 +27,35 @@ export default function MultiEventBatch() {
 
   const [allRegisteredEvents, setAllRegisteredEvents] = useState([]);
   const [matchingEvents, setMatchingEvents] = useState([]);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  // Step 2: Dynamic Event Slots
+  // Step 2: Slots
   const [slotsCount, setSlotsCount] = useState(2);
-  const [selectedSlots, setSelectedSlots] = useState([]); // [{ slotId: 1, eventId: '' }, ...]
+  const [selectedSlots, setSelectedSlots] = useState([
+    { slotId: 1, eventId: '' },
+    { slotId: 2, eventId: '' }
+  ]);
 
   // Step 3: Daily Uploads { [slotId]: { [dayIndex]: [File, File...] } }
   const [dayUploads, setDayUploads] = useState({});
 
-  // Processing & State
+  // Processing & Feedback
   const [isProcessing, setIsProcessing] = useState(false);
   const [errorMsg, setErrorMsg] = useState(null);
   const [batchResult, setBatchResult] = useState(null);
 
-  // Load events from Data Service
   useEffect(() => {
     async function load() {
-      const events = await getEvents();
-      setAllRegisteredEvents(events);
+      const list = await getEvents();
+      setAllRegisteredEvents(list);
     }
     load();
   }, []);
 
-  // Filter events within Date Range
-  useEffect(() => {
+  const handleFindEvents = () => {
+    setErrorMsg(null);
+    setHasSearched(true);
+
     if (!allRegisteredEvents || allRegisteredEvents.length === 0) {
       setMatchingEvents([]);
       return;
@@ -81,21 +70,17 @@ export default function MultiEventBatch() {
     });
 
     setMatchingEvents(filtered);
-  }, [fromDate, toDate, allRegisteredEvents]);
+  };
 
-  // Adjust slots count
-  useEffect(() => {
-    const currentLength = selectedSlots.length;
-    if (slotsCount > currentLength) {
-      const added = [];
-      for (let i = currentLength; i < slotsCount; i++) {
-        added.push({ slotId: i + 1, eventId: '' });
-      }
-      setSelectedSlots([...selectedSlots, ...added]);
-    } else if (slotsCount < currentLength) {
-      setSelectedSlots(selectedSlots.slice(0, slotsCount));
+  const handleSlotCountChange = (count) => {
+    setSlotsCount(count);
+    const updated = [];
+    for (let i = 1; i <= count; i++) {
+      const existing = selectedSlots.find(s => s.slotId === i);
+      updated.push(existing || { slotId: i, eventId: '' });
     }
-  }, [slotsCount]);
+    setSelectedSlots(updated);
+  };
 
   const handleSelectEventForSlot = (slotId, eventId) => {
     setSelectedSlots(prev => prev.map(s => (s.slotId === slotId ? { ...s, eventId } : s)));
@@ -122,40 +107,37 @@ export default function MultiEventBatch() {
     setDayUploads(prev => {
       const slotData = prev[slotId] || {};
       const dayData = slotData[dayIndex] || [];
-      const updated = dayData.filter((_, i) => i !== fileIdx);
       return {
         ...prev,
         [slotId]: {
           ...slotData,
-          [dayIndex]: updated
+          [dayIndex]: dayData.filter((_, i) => i !== fileIdx)
         }
       };
     });
   };
 
-  const handleRunBatchSegregation = async () => {
+  const handleExecuteSegregation = async () => {
     setErrorMsg(null);
     setBatchResult(null);
 
-    // Validate that at least one slot has an event selected and files uploaded
-    const compiledEventSlots = [];
+    const compiledSlots = [];
     for (const slot of selectedSlots) {
       if (!slot.eventId) continue;
       const ev = allRegisteredEvents.find(e => e.id === slot.eventId);
       if (!ev) continue;
 
-      const uploadsForThisSlot = dayUploads[slot.slotId] || {};
-      // Check if at least one day has files
-      const hasFiles = Object.values(uploadsForThisSlot).some(arr => arr && arr.length > 0);
+      const uploads = dayUploads[slot.slotId] || {};
+      const hasFiles = Object.values(uploads).some(arr => arr && arr.length > 0);
       if (hasFiles) {
-        compiledEventSlots.push({
+        compiledSlots.push({
           event: ev,
-          dayUploads: uploadsForThisSlot
+          dayUploads: uploads
         });
       }
     }
 
-    if (compiledEventSlots.length === 0) {
+    if (compiledSlots.length === 0) {
       setErrorMsg('Please select at least one event and upload attendance sheets for its scheduled days.');
       return;
     }
@@ -163,10 +145,9 @@ export default function MultiEventBatch() {
     setIsProcessing(true);
 
     try {
-      const result = await processMultiEventBatch(compiledEventSlots);
+      const result = await processMultiEventBatch(compiledSlots);
 
-      // Trigger direct browser download
-      const filename = `multi_event_batch_${fromDate}_to_${toDate}.zip`;
+      const filename = `all_schools_${fromDate}_to_${toDate}.zip`;
       const url = window.URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
@@ -178,283 +159,233 @@ export default function MultiEventBatch() {
 
       setBatchResult({
         filename,
-        eventsCount: compiledEventSlots.length,
+        eventsCount: compiledSlots.length,
         totalStudents: result.totalStudents,
         schoolsCount: result.schoolsCount,
         filesCount: result.totalFiles
       });
 
-      // Audit Trail: Record in History
+      // Log into Segregation History
       try {
         await addSegregationHistory({
-          runTitle: `Multi-Event Batch (${compiledEventSlots.map(s => s.event.eventName).slice(0, 2).join(', ')})`,
+          runTitle: `Batch Segregation (${compiledSlots.map(s => s.event.eventName).slice(0, 2).join(', ')})`,
           dateRange: `${fromDate} to ${toDate}`,
-          eventsProcessed: compiledEventSlots.length,
+          eventsProcessed: compiledSlots.length,
           totalStudents: result.totalStudents,
           schoolsRepresented: result.schoolsCount,
           filesCount: result.totalFiles,
           zipName: filename
         });
       } catch (hErr) {
-        console.warn('Could not record batch history:', hErr);
+        console.warn('History recording error:', hErr);
       }
     } catch (err) {
-      console.error('Batch segregation processing failed:', err);
-      setErrorMsg(err.message || 'Batch segregation process failed.');
+      console.error('Batch error:', err);
+      setErrorMsg(err.message || 'Segregation failed.');
     } finally {
       setIsProcessing(false);
     }
   };
 
   return (
-    <div className="multi-event-batch-container">
-      <div className="section-title-bar">
-        <div>
-          <h2 className="section-heading">📑 Multi-Event Batch Segregation Engine</h2>
-          <p className="section-subheading">
-            Query registered events, assign dynamic slots, link daily attendance sheets per session, and compile multi-school departmental workbooks into a unified archive.
-          </p>
-        </div>
-      </div>
+    <div className="exact-form-outer-card">
+      <h2 className="exact-card-heading">Excel Segregation</h2>
 
       {errorMsg && (
-        <div className="alert-box alert-error">
-          <AlertTriangle size={20} className="alert-icon" />
-          <div className="alert-text">{errorMsg}</div>
-          <button className="alert-close" onClick={() => setErrorMsg(null)}>
-            <X size={16} />
-          </button>
+        <div className="exact-alert-box exact-alert-error">
+          {errorMsg}
         </div>
       )}
 
       {batchResult && (
-        <div className="alert-box alert-success">
-          <CheckCircle2 size={20} className="alert-icon" />
-          <div className="alert-text">
-            <strong>Batch Segregation Successful!</strong> Downloaded <code>{batchResult.filename}</code> covering {batchResult.eventsCount} events, {batchResult.schoolsCount} schools, and {batchResult.totalStudents} total student records.
-          </div>
-          <button className="alert-close" onClick={() => setBatchResult(null)}>
-            <X size={16} />
-          </button>
+        <div className="exact-alert-box exact-alert-success">
+          <strong>Batch Segregation Completed!</strong> Downloaded <code>{batchResult.filename}</code> covering {batchResult.eventsCount} events, {batchResult.schoolsCount} schools, and {batchResult.totalStudents} total student registrations.
         </div>
       )}
 
-      {/* Step 1: Date Filter */}
-      <div className="step-card">
-        <div className="step-badge-row">
-          <span className="step-indicator">Step 1</span>
-          <h3 className="step-title">Query Registered Events by Date Window</h3>
-        </div>
-        <p className="step-desc">
-          Specify a date range to filter institutional events scheduled in this period.
-        </p>
+      {/* Step 1 - Select Date Range (Exact from Screenshot 5) */}
+      <div className="step1-exact-section">
+        <h4 className="step1-exact-subtitle">Step 1 — Select Date Range</h4>
 
-        <div className="date-filter-row">
-          <div className="form-group">
-            <label className="form-label">From Date</label>
-            <div className="input-icon-wrapper">
-              <Calendar size={16} className="field-icon" />
-              <input
-                type="date"
-                className="form-input"
-                value={fromDate}
-                onChange={(e) => setFromDate(e.target.value)}
-              />
-            </div>
-          </div>
+        <div className="step1-exact-inputs-row">
+          <input
+            type="date"
+            className="exact-date-input"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
 
-          <div className="form-group">
-            <label className="form-label">To Date</label>
-            <div className="input-icon-wrapper">
-              <Calendar size={16} className="field-icon" />
-              <input
-                type="date"
-                className="form-input"
-                value={toDate}
-                onChange={(e) => setToDate(e.target.value)}
-              />
-            </div>
-          </div>
+          <span className="step1-to-text">to</span>
 
-          <div className="filter-summary-pill">
-            <Filter size={16} />
-            <span>{matchingEvents.length} Event{matchingEvents.length === 1 ? '' : 's'} Match Window</span>
-          </div>
-        </div>
-      </div>
+          <input
+            type="date"
+            className="exact-date-input"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
+          />
 
-      {/* Step 2: Slot Creator */}
-      <div className="step-card mt-6">
-        <div className="step-badge-row">
-          <span className="step-indicator">Step 2</span>
-          <h3 className="step-title">Event Slot Allocation</h3>
-        </div>
-        <p className="step-desc">
-          Select how many events you want to batch-process simultaneously.
-        </p>
-
-        <div className="slot-counter-row">
-          <label className="form-label">Number of Events to Process:</label>
-          <div className="slot-buttons-flex">
-            {[1, 2, 3, 4, 5].map(num => (
-              <button
-                key={num}
-                type="button"
-                className={`btn-slot-num ${slotsCount === num ? 'slot-num-active' : ''}`}
-                onClick={() => setSlotsCount(num)}
-              >
-                {num} Event{num > 1 ? 's' : ''}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Step 3: Event Slots & Daily Dropzones */}
-      <div className="step-card mt-6">
-        <div className="step-badge-row">
-          <span className="step-indicator">Step 3</span>
-          <h3 className="step-title">Event Session Matching & Daily Spreadsheet Uploads</h3>
-        </div>
-        <p className="step-desc">
-          For each slot, pick an event and drop the attendance sheets for each scheduled day.
-        </p>
-
-        <div className="slots-list-wrapper">
-          {selectedSlots.map((slot) => {
-            const selectedEvent = allRegisteredEvents.find(e => e.id === slot.eventId);
-            const slotUploads = dayUploads[slot.slotId] || {};
-
-            return (
-              <div key={slot.slotId} className="event-slot-card">
-                <div className="slot-header-bar">
-                  <span className="slot-header-title">
-                    <Layers size={18} /> Slot {slot.slotId}
-                  </span>
-
-                  <select
-                    className="slot-event-select"
-                    value={slot.eventId}
-                    onChange={(e) => handleSelectEventForSlot(slot.slotId, e.target.value)}
-                  >
-                    <option value="">-- Choose an Event to Link --</option>
-                    {matchingEvents.map(ev => (
-                      <option key={ev.id} value={ev.id}>
-                        {ev.eventName} ({ev.school} • {ev.eventType} • {ev.isMultiDay ? `${ev.days.length} Days` : 'Single Day'})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {selectedEvent ? (
-                  <div className="slot-days-container">
-                    <div className="slot-event-meta-strip">
-                      <span><strong>Coordinator:</strong> {selectedEvent.coordinatorName}</span>
-                      <span><strong>School:</strong> {selectedEvent.school}</span>
-                      <span><strong>Type:</strong> {selectedEvent.eventType}</span>
-                    </div>
-
-                    <div className="days-dropzones-grid">
-                      {selectedEvent.days.map((day) => {
-                        const uploadedForThisDay = slotUploads[day.dayIndex] || [];
-                        const inputId = `file_input_${slot.slotId}_${day.dayIndex}`;
-
-                        return (
-                          <div key={day.dayIndex} className="day-dropzone-box">
-                            <div className="day-dropzone-header">
-                              <span className="day-label-tag">Day {day.dayIndex}</span>
-                              <span className="day-date-tag">{day.date}</span>
-                            </div>
-
-                            <div className="day-venue-time-sub">
-                              <span>📍 {day.venue}</span>
-                              <span>⏰ {day.startTime} – {day.endTime}</span>
-                            </div>
-
-                            {/* Drop Zone Area */}
-                            <label
-                              htmlFor={inputId}
-                              className="day-drop-area"
-                              onDragOver={(e) => e.preventDefault()}
-                              onDrop={(e) => {
-                                e.preventDefault();
-                                if (e.dataTransfer.files) {
-                                  handleFilesAddedToDay(slot.slotId, day.dayIndex, e.dataTransfer.files);
-                                }
-                              }}
-                            >
-                              <UploadCloud size={24} className="day-upload-icon" />
-                              <span className="day-drop-prompt">Drop <code>.xlsx</code> / <code>.csv</code> or click</span>
-                              <input
-                                id={inputId}
-                                type="file"
-                                multiple
-                                accept=".xlsx, .xls, .csv"
-                                style={{ display: 'none' }}
-                                onChange={(e) => {
-                                  if (e.target.files) {
-                                    handleFilesAddedToDay(slot.slotId, day.dayIndex, e.target.files);
-                                  }
-                                }}
-                              />
-                            </label>
-
-                            {/* Uploaded Files for Day */}
-                            {uploadedForThisDay.length > 0 && (
-                              <div className="day-files-list">
-                                {uploadedForThisDay.map((f, fIdx) => (
-                                  <div key={fIdx} className="day-file-item">
-                                    <FileSpreadsheet size={14} />
-                                    <span className="day-file-name" title={f.name}>{f.name}</span>
-                                    <button
-                                      type="button"
-                                      className="day-file-remove"
-                                      onClick={() => handleRemoveFile(slot.slotId, day.dayIndex, fIdx)}
-                                    >
-                                      ×
-                                    </button>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="slot-empty-notice">
-                    Please select a registered event from the dropdown above to view its scheduled session days.
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Process Batch Button */}
-        <div className="batch-action-bar">
           <button
             type="button"
-            className="btn-run-batch"
-            onClick={handleRunBatchSegregation}
-            disabled={isProcessing}
+            className="exact-btn-find-events"
+            onClick={handleFindEvents}
           >
-            {isProcessing ? (
-              <>
-                <RefreshCw size={20} className="spinning-icon" />
-                <span>Extracting SheetJS Rows & Generating ZIP...</span>
-              </>
-            ) : (
-              <>
-                <Sparkles size={20} />
-                <span>Execute Batch Segregation & Download ZIP</span>
-                <ArrowRight size={20} />
-              </>
-            )}
+            <span className="search-icon-symbol">🔍</span>
+            <span>Find Events</span>
           </button>
         </div>
       </div>
+
+      {/* Step 2 & 3: Slot Allocation & File Dropzones (revealed after clicking Find Events) */}
+      {hasSearched && (
+        <div className="batch-workflow-section mt-6">
+          <div className="step2-exact-section">
+            <h4 className="step1-exact-subtitle">
+              Step 2 — Allocate Event Slots ({matchingEvents.length} event{matchingEvents.length === 1 ? '' : 's'} available in range)
+            </h4>
+
+            <div className="slot-selection-chips">
+              <span className="slot-label-text">Select number of events:</span>
+              {[1, 2, 3, 4, 5].map(n => (
+                <button
+                  key={n}
+                  type="button"
+                  className={`btn-slot-pill ${slotsCount === n ? 'slot-pill-active' : ''}`}
+                  onClick={() => handleSlotCountChange(n)}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Slots Mapping */}
+          <div className="step3-exact-section mt-4">
+            <h4 className="step1-exact-subtitle">
+              Step 3 — Link Registered Events & Drop Attendance Spreadsheets
+            </h4>
+
+            <div className="slots-grid-list">
+              {selectedSlots.map(slot => {
+                const currentEv = allRegisteredEvents.find(e => e.id === slot.eventId);
+                const slotDays = dayUploads[slot.slotId] || {};
+
+                return (
+                  <div key={slot.slotId} className="slot-container-card">
+                    <div className="slot-top-row">
+                      <span className="slot-badge-number">Slot {slot.slotId}</span>
+
+                      <select
+                        className="exact-form-input slot-dropdown-select"
+                        value={slot.eventId}
+                        onChange={(e) => handleSelectEventForSlot(slot.slotId, e.target.value)}
+                      >
+                        <option value="">-- Choose an Event to Link --</option>
+                        {matchingEvents.map(ev => (
+                          <option key={ev.id} value={ev.id}>
+                            {ev.eventName} ({ev.school} • {ev.eventType} • {ev.isMultiDay ? `${ev.days.length} Days` : 'Single Day'})
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {currentEv ? (
+                      <div className="slot-days-layout">
+                        <div className="slot-event-summary">
+                          <span><strong>Coordinator:</strong> {currentEv.coordinatorName}</span>
+                          <span><strong>School:</strong> {currentEv.school}</span>
+                          <span><strong>Type:</strong> {currentEv.eventType}</span>
+                        </div>
+
+                        <div className="slot-days-dropzones-row">
+                          {currentEv.days.map(day => {
+                            const filesForDay = slotDays[day.dayIndex] || [];
+                            const inputId = `batch_file_${slot.slotId}_${day.dayIndex}`;
+
+                            return (
+                              <div key={day.dayIndex} className="exact-day-card">
+                                <div className="exact-day-badge-header">
+                                  <span className="day-index-badge">Day {day.dayIndex}</span>
+                                  <span className="day-date-span">{day.date}</span>
+                                </div>
+
+                                <div className="day-sub-info">
+                                  <span>📍 {day.venue}</span>
+                                  <span>⏰ {day.startTime} – {day.endTime}</span>
+                                </div>
+
+                                <label
+                                  htmlFor={inputId}
+                                  className="exact-day-dropzone"
+                                  onDragOver={(e) => e.preventDefault()}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    if (e.dataTransfer.files) {
+                                      handleFilesAddedToDay(slot.slotId, day.dayIndex, e.dataTransfer.files);
+                                    }
+                                  }}
+                                >
+                                  <UploadCloud size={20} className="dropzone-mini-icon" />
+                                  <span className="dropzone-mini-text">Drop <code>.xlsx</code> / <code>.csv</code> or click</span>
+                                  <input
+                                    id={inputId}
+                                    type="file"
+                                    multiple
+                                    accept=".xlsx, .xls, .csv"
+                                    style={{ display: 'none' }}
+                                    onChange={(e) => {
+                                      if (e.target.files) {
+                                        handleFilesAddedToDay(slot.slotId, day.dayIndex, e.target.files);
+                                      }
+                                    }}
+                                  />
+                                </label>
+
+                                {filesForDay.length > 0 && (
+                                  <div className="exact-files-sublist">
+                                    {filesForDay.map((f, fIdx) => (
+                                      <div key={fIdx} className="exact-file-tag">
+                                        <FileSpreadsheet size={13} />
+                                        <span className="file-name-truncated" title={f.name}>{f.name}</span>
+                                        <button
+                                          type="button"
+                                          className="btn-remove-mini-file"
+                                          onClick={() => handleRemoveFile(slot.slotId, day.dayIndex, fIdx)}
+                                        >
+                                          ×
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="slot-empty-guide">
+                        Select an event from the dropdown to display its scheduled sessions.
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Execute Segregation Button */}
+            <div className="exact-submit-wrapper mt-6">
+              <button
+                type="button"
+                className="exact-btn-submit"
+                onClick={handleExecuteSegregation}
+                disabled={isProcessing}
+              >
+                {isProcessing ? 'Processing Segregation & Packaging ZIP...' : 'Execute Segregation & Download ZIP'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
