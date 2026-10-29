@@ -64,31 +64,17 @@ export function isUsingFirebase() {
  * --- EVENTS CRUD ---
  */
 export async function getEvents() {
-  const db = getDb();
-  if (db) {
-    try {
-      const snap = await getDocs(collection(db, 'events'));
-      const list = [];
-      snap.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      if (list.length > 0) return list;
-    } catch (err) {
-      console.warn('Firestore getEvents failed, falling back to LocalStorage:', err);
-    }
-  }
-
-  // LocalStorage Fallback
+  // Always load from local persistence first
   try {
     const raw = localStorage.getItem(EVENTS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(e => e.eventName === 'Gyhby')) {
+      if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
       }
     }
   } catch (e) {
-    console.error('LocalStorage events error:', e);
+    console.error('LocalStorage events read error:', e);
   }
 
   // Default seed matching screenshots
@@ -98,44 +84,49 @@ export async function getEvents() {
 }
 
 export async function addEvent(eventData) {
-  const newEvent = {
+  const current = await getEvents();
+  const id = `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const saved = {
+    id,
     ...eventData,
     createdAt: new Date().toISOString()
   };
 
-  const db = getDb();
-  if (db) {
-    try {
-      const docRef = await addDoc(collection(db, 'events'), newEvent);
-      return { id: docRef.id, ...newEvent };
-    } catch (err) {
-      console.warn('Firestore addEvent failed, using LocalStorage:', err);
-    }
-  }
-
-  // LocalStorage Fallback
-  const current = await getEvents();
-  const id = `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-  const saved = { id, ...newEvent };
   const updated = [saved, ...current];
   localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
+
+  // Dispatch global event for instant UI reflection across tabs
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: saved }));
+  }
+
+  // Background sync to Firestore if connected
+  const db = getDb();
+  if (db) {
+    addDoc(collection(db, 'events'), saved).catch(err => {
+      console.warn('Firestore background event sync error:', err);
+    });
+  }
+
   return saved;
 }
 
 export async function deleteEvent(eventId) {
-  const db = getDb();
-  if (db) {
-    try {
-      await deleteDoc(doc(db, 'events', eventId));
-    } catch (err) {
-      console.warn('Firestore deleteEvent failed, checking LocalStorage:', err);
-    }
-  }
-
-  // LocalStorage Fallback
   const current = await getEvents();
   const updated = current.filter(e => e.id !== eventId);
   localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: { deletedId: eventId } }));
+  }
+
+  const db = getDb();
+  if (db) {
+    deleteDoc(doc(db, 'events', eventId)).catch(err => {
+      console.warn('Firestore background delete error:', err);
+    });
+  }
+
   return true;
 }
 
@@ -143,33 +134,16 @@ export async function deleteEvent(eventId) {
  * --- SEGREGATION HISTORY CRUD ---
  */
 export async function getSegregationHistory() {
-  const db = getDb();
-  if (db) {
-    try {
-      const snap = await getDocs(collection(db, 'segregation_history'));
-      const list = [];
-      snap.forEach(docSnap => {
-        list.push({ id: docSnap.id, ...docSnap.data() });
-      });
-      if (list.length > 0) {
-        return list.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
-      }
-    } catch (err) {
-      console.warn('Firestore getSegregationHistory failed, using LocalStorage:', err);
-    }
-  }
-
-  // LocalStorage Fallback
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (raw) {
       const list = JSON.parse(raw);
-      if (Array.isArray(list) && list.length > 0 && list.some(h => h.zipName?.includes('2026-07-01'))) {
-        return list.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+      if (Array.isArray(list) && list.length > 0) {
+        return list.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
       }
     }
   } catch (e) {
-    console.error('LocalStorage history error:', e);
+    console.error('LocalStorage history read error:', e);
   }
 
   const seeded = getInitialMockHistory();
@@ -178,43 +152,48 @@ export async function getSegregationHistory() {
 }
 
 export async function addSegregationHistory(historyRecord) {
-  const record = {
+  const current = await getSegregationHistory();
+  const id = `hist_${Date.now()}`;
+  const saved = {
+    id,
     ...historyRecord,
-    timestamp: new Date().toISOString()
+    timestamp: historyRecord.timestamp || new Date().toISOString()
   };
+
+  const updated = [saved, ...current];
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+
+  // Dispatch global event for instant UI reflection across tabs
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: saved }));
+  }
 
   const db = getDb();
   if (db) {
-    try {
-      const docRef = await addDoc(collection(db, 'segregation_history'), record);
-      return { id: docRef.id, ...record };
-    } catch (err) {
-      console.warn('Firestore addSegregationHistory failed, using LocalStorage:', err);
-    }
+    addDoc(collection(db, 'segregation_history'), saved).catch(err => {
+      console.warn('Firestore background history sync error:', err);
+    });
   }
 
-  // LocalStorage Fallback
-  const current = await getSegregationHistory();
-  const id = `hist_${Date.now()}`;
-  const saved = { id, ...record };
-  const updated = [saved, ...current];
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
   return saved;
 }
 
 export async function deleteSegregationHistory(historyId) {
-  const db = getDb();
-  if (db) {
-    try {
-      await deleteDoc(doc(db, 'segregation_history', historyId));
-    } catch (err) {
-      console.warn('Firestore deleteSegregationHistory failed:', err);
-    }
-  }
-
   const current = await getSegregationHistory();
   const updated = current.filter(h => h.id !== historyId);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: { deletedId: historyId } }));
+  }
+
+  const db = getDb();
+  if (db) {
+    deleteDoc(doc(db, 'segregation_history', historyId)).catch(err => {
+      console.warn('Firestore background history delete error:', err);
+    });
+  }
+
   return true;
 }
 

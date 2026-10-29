@@ -1,34 +1,26 @@
 /**
- * Exact Institutional Header Component
- * Matches the official VIT-IST layout from screenshots:
- * - Top-right user menu with VIT avatar and "Attendance ▾" dropdown
- * - Centered VIT and IIC logos side by side
- * - Office of Innovation, Startup and Technology Transfer (VIT-IST)
- * - SMART ATTENDANCE SEGREGATOR
+ * Institutional Header Component
+ * Matches Pic 3 from user screenshots:
+ * - Top-right user menu with circular VIT icon and "Attendance ▾"
+ * - Profile dropdown containing:
+ *   - Circular VIT emblem
+ *   - "Attendance" title
+ *   - "VIT-IST Admin" subtitle
+ *   - Full-width "Sign out" button (#190059)
+ * - Centered institutional branding (VIT + IIC logos)
+ * - Subtitles:
+ *   - Office of Innovation, Startup and Technology Transfer (VIT-IST)
+ *   - SMART ATTENDANCE SEGREGATOR
  */
 
 import React, { useState, useRef, useEffect } from 'react';
-import {
-  LogOut,
-  Settings,
-  BookOpen,
-  Database,
-  User,
-  Zap,
-  CheckCircle2
-} from 'lucide-react';
-import { isUsingFirebase } from '../services/dataService';
 
 export default function Header({
   currentUser,
-  onOpenRules,
-  onOpenCloudSettings,
-  onSelectTab,
   onLogout
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
-  const isCloudConnected = isUsingFirebase();
 
   // Close dropdown on outside click
   useEffect(() => {
@@ -43,7 +35,7 @@ export default function Header({
 
   return (
     <header className="exact-portal-header">
-      {/* Top-Right User Profile & Tools Menu */}
+      {/* Top-Right User Profile & Logout Dropdown (Matching Pic 3) */}
       {currentUser && (
         <div className="top-right-user-menu" ref={dropdownRef}>
           <button
@@ -59,65 +51,27 @@ export default function Header({
           </button>
 
           {dropdownOpen && (
-            <div className="user-dropdown-menu">
-              <div className="dropdown-user-header">
-                <strong>{currentUser.name || 'Institutional Admin'}</strong>
-                <span className="dropdown-user-sub">
-                  {isCloudConnected ? '🟢 Firestore Active' : '⚪ Offline / LocalStorage'}
-                </span>
+            <div className="user-dropdown-menu-pic3">
+              <div className="profile-center-emblem">
+                <div className="user-circle-logo-large">
+                  <img src="/vit-logo.png" alt="VIT" className="vit-circle-img" />
+                </div>
+                <h3 className="profile-dropdown-name">Attendance</h3>
+                <p className="profile-dropdown-sub">VIT-IST Admin</p>
               </div>
 
-              <div className="dropdown-divider"></div>
-
-              <button
-                type="button"
-                className="dropdown-item"
-                onClick={() => {
-                  setDropdownOpen(false);
-                  if (onSelectTab) onSelectTab('quick');
-                }}
-              >
-                <Zap size={15} />
-                <span>Quick Segregation Engine</span>
-              </button>
-
-              <button
-                type="button"
-                className="dropdown-item"
-                onClick={() => {
-                  setDropdownOpen(false);
-                  if (onOpenRules) onOpenRules();
-                }}
-              >
-                <BookOpen size={15} />
-                <span>Rules & Instructions</span>
-              </button>
-
-              <button
-                type="button"
-                className="dropdown-item"
-                onClick={() => {
-                  setDropdownOpen(false);
-                  if (onOpenCloudSettings) onOpenCloudSettings();
-                }}
-              >
-                <Database size={15} />
-                <span>Cloud & Database Settings</span>
-              </button>
-
-              <div className="dropdown-divider"></div>
-
-              <button
-                type="button"
-                className="dropdown-item dropdown-item-logout"
-                onClick={() => {
-                  setDropdownOpen(false);
-                  if (onLogout) onLogout();
-                }}
-              >
-                <LogOut size={15} />
-                <span>Sign Out</span>
-              </button>
+              <div className="profile-dropdown-action">
+                <button
+                  type="button"
+                  className="btn-signout-purple"
+                  onClick={() => {
+                    setDropdownOpen(false);
+                    if (onLogout) onLogout();
+                  }}
+                >
+                  Sign out
+                </button>
+              </div>
             </div>
           )}
         </div>

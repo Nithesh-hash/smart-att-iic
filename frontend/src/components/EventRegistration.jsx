@@ -363,20 +363,22 @@ export default function EventRegistration({ onEventCreated }) {
           </div>
         </div>
 
-        {/* Multi-day Event Toggle */}
-        <div className="exact-checkbox-group">
-          <label className="exact-checkbox-label">
-            <span>Multi-day Event?</span>
-            <input
-              type="checkbox"
-              className="exact-checkbox-input"
-              checked={isMultiDay}
-              onChange={(e) => setIsMultiDay(e.target.checked)}
-            />
-          </label>
+        {/* Multi-day Event Toggle Switch (Professional Switch) */}
+        <div className="exact-form-group">
+          <div className="exact-toggle-row">
+            <span className="exact-toggle-label">Multi-day Event?</span>
+            <label className="switch-toggle-container">
+              <input
+                type="checkbox"
+                checked={isMultiDay}
+                onChange={(e) => setIsMultiDay(e.target.checked)}
+              />
+              <span className="switch-slider"></span>
+            </label>
+          </div>
         </div>
 
-        {/* SINGLE DAY SCHEDULE (Empty date by default) */}
+        {/* SINGLE DAY SCHEDULE (Empty date by default - Matching Pic 2) */}
         {!isMultiDay && (
           <div className="single-day-section">
             <div className="exact-form-group">
@@ -390,16 +392,16 @@ export default function EventRegistration({ onEventCreated }) {
               />
             </div>
 
-            {/* Event Timing */}
+            {/* Event Timing (Matching Pic 2) */}
             <div className="exact-form-group">
               <label className="exact-form-label">Event Timing</label>
-              <div className="timing-dropdowns-row">
+              <div className="exact-timing-container">
                 {/* From Group */}
-                <div className="timing-group">
-                  <span className="timing-sublabel">From</span>
-                  <div className="timing-selects-triple">
+                <div className="exact-timing-col">
+                  <span className="timing-label-sub">From</span>
+                  <div className="timing-dropdowns-row">
                     <select
-                      className="exact-timing-select"
+                      className="exact-select-mini"
                       value={fromHour}
                       onChange={(e) => setFromHour(e.target.value)}
                     >
@@ -407,7 +409,7 @@ export default function EventRegistration({ onEventCreated }) {
                     </select>
 
                     <select
-                      className="exact-timing-select"
+                      className="exact-select-mini"
                       value={fromMinute}
                       onChange={(e) => setFromMinute(e.target.value)}
                     >
@@ -415,7 +417,7 @@ export default function EventRegistration({ onEventCreated }) {
                     </select>
 
                     <select
-                      className="exact-timing-select"
+                      className="exact-select-mini"
                       value={fromModifier}
                       onChange={(e) => setFromModifier(e.target.value)}
                     >
@@ -426,11 +428,11 @@ export default function EventRegistration({ onEventCreated }) {
                 </div>
 
                 {/* To Group */}
-                <div className="timing-group">
-                  <span className="timing-sublabel">To</span>
-                  <div className="timing-selects-triple">
+                <div className="exact-timing-col">
+                  <span className="timing-label-sub">To</span>
+                  <div className="timing-dropdowns-row">
                     <select
-                      className="exact-timing-select"
+                      className="exact-select-mini"
                       value={toHour}
                       onChange={(e) => setToHour(e.target.value)}
                     >
@@ -438,7 +440,7 @@ export default function EventRegistration({ onEventCreated }) {
                     </select>
 
                     <select
-                      className="exact-timing-select"
+                      className="exact-select-mini"
                       value={toMinute}
                       onChange={(e) => setToMinute(e.target.value)}
                     >
@@ -446,7 +448,7 @@ export default function EventRegistration({ onEventCreated }) {
                     </select>
 
                     <select
-                      className="exact-timing-select"
+                      className="exact-select-mini"
                       value={toModifier}
                       onChange={(e) => setToModifier(e.target.value)}
                     >

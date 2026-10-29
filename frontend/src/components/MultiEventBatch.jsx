@@ -21,17 +21,9 @@ import { getEvents, addSegregationHistory } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
 
 export default function MultiEventBatch() {
-  // Step 1: Date Range Filter
-  const [fromDate, setFromDate] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() - 6);
-    return d.toISOString().split('T')[0];
-  });
-  const [toDate, setToDate] = useState(() => {
-    const d = new Date();
-    d.setMonth(d.getMonth() + 6);
-    return d.toISOString().split('T')[0];
-  });
+  // Step 1: Date Range Filter (Starts empty so browser shows placeholder dd-mm-yyyy)
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
 
   const [allRegisteredEvents, setAllRegisteredEvents] = useState([]);
   const [matchingEvents, setMatchingEvents] = useState([]);
@@ -48,12 +40,16 @@ export default function MultiEventBatch() {
   const [errorMessage, setErrorMessage] = useState(null);
   const [segregationResult, setSegregationResult] = useState(null);
 
+  const loadAllEvents = async () => {
+    const events = await getEvents();
+    setAllRegisteredEvents(events);
+  };
+
   useEffect(() => {
-    async function load() {
-      const events = await getEvents();
-      setAllRegisteredEvents(events);
-    }
-    load();
+    loadAllEvents();
+    const handleEventsChanged = () => loadAllEvents();
+    window.addEventListener('smart_att_events_changed', handleEventsChanged);
+    return () => window.removeEventListener('smart_att_events_changed', handleEventsChanged);
   }, []);
 
   const handleFindEvents = () => {
@@ -66,11 +62,20 @@ export default function MultiEventBatch() {
       return;
     }
 
+    // If both dates are empty, display all events
+    if (!fromDate && !toDate) {
+      setMatchingEvents(allRegisteredEvents);
+      return;
+    }
+
     const filtered = allRegisteredEvents.filter(ev => {
       if (!ev.days || ev.days.length === 0) return true;
       return ev.days.some(d => {
         if (!d.date) return true;
-        return d.date >= fromDate && d.date <= toDate;
+        if (fromDate && toDate) return d.date >= fromDate && d.date <= toDate;
+        if (fromDate) return d.date >= fromDate;
+        if (toDate) return d.date <= toDate;
+        return true;
       });
     });
 

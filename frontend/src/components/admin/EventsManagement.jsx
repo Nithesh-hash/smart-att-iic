@@ -54,6 +54,9 @@ export default function EventsManagement() {
 
   useEffect(() => {
     loadEvents();
+    const handleEventsChanged = () => loadEvents();
+    window.addEventListener('smart_att_events_changed', handleEventsChanged);
+    return () => window.removeEventListener('smart_att_events_changed', handleEventsChanged);
   }, []);
 
   const handleClear = () => {

@@ -73,6 +73,9 @@ export default function SegregationHistory() {
 
   useEffect(() => {
     loadHistory();
+    const handleHistoryChanged = () => loadHistory();
+    window.addEventListener('smart_att_history_changed', handleHistoryChanged);
+    return () => window.removeEventListener('smart_att_history_changed', handleHistoryChanged);
   }, []);
 
   const handleClear = () => {

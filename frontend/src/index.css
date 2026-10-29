@@ -1572,137 +1572,522 @@ body {
   justify-content: center;
 }
 
-/* Analytics KPIs */
-.kpi-cards-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-  margin-bottom: 20px;
+/* ==========================================================================
+   USER PROFILE DROPDOWN (MATCHING PIC 3)
+   ========================================================================== */
+.user-dropdown-menu-pic3 {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 8px;
+  width: 250px;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
+  padding: 22px 18px 18px;
+  border: 1px solid #f1f5f9;
+  z-index: 1000;
+  text-align: center;
 }
 
-.kpi-card {
+.profile-center-emblem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.user-circle-logo-large {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  background: #ffffff;
+}
+
+.profile-dropdown-name {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
+}
+
+.profile-dropdown-sub {
+  font-size: 13px;
+  color: #64748b;
+  margin: 3px 0 16px;
+}
+
+.profile-dropdown-action {
+  width: 100%;
+}
+
+.btn-signout-purple {
+  width: 100%;
+  background: #190059;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-size: 14.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-signout-purple:hover {
+  background: #270088;
+}
+
+/* Modern Professional Toggle Switch (Pic 2) */
+.exact-toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.exact-toggle-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.switch-toggle-container {
+  position: relative;
+  display: inline-block;
+  width: 42px;
+  height: 22px;
+}
+
+.switch-toggle-container input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.switch-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #cbd5e1;
+  transition: .25s;
+  border-radius: 22px;
+}
+
+.switch-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .25s;
+  border-radius: 50%;
+}
+
+input:checked + .switch-slider {
+  background-color: #190059;
+}
+
+input:checked + .switch-slider:before {
+  transform: translateX(20px);
+}
+
+/* ==========================================================================
+   ANALYTICS DASHBOARD (MATCHING PIC 4 & PIC 5)
+   ========================================================================== */
+.exact-analytics-container {
+  padding-top: 4px;
+}
+
+/* 1. Top Time Pills */
+.analytics-top-pills-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.time-pills-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.btn-time-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 16px;
+  border-radius: 9999px;
+  background: #ffffff;
+  border: 1px solid #190059;
+  color: #190059;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-time-pill.time-pill-active {
+  background: #190059;
+  color: #ffffff;
+  border-color: #190059;
+}
+
+.analytics-showing-badge {
+  background: #f3f0ff;
+  color: #190059;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 5px 12px;
+  border-radius: 9999px;
+}
+
+/* 2. Sub-filter & Download Row */
+.analytics-sub-filter-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.event-type-filter-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.event-type-label {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.analytics-event-type-select {
+  height: 36px;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 0 12px;
+  font-size: 13px;
+  color: #111827;
+  background: #ffffff;
+  min-width: 180px;
+  outline: none;
+}
+
+.analytics-event-type-select:focus {
+  border-color: #190059;
+}
+
+.btn-download-analytics-report {
+  background: #190059;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s;
+}
+
+.btn-download-analytics-report:hover {
+  background: #270088;
+}
+
+/* 3. 6 KPI Cards Grid (Pic 4) */
+.analytics-6kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .analytics-6kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 600px) {
+  .analytics-6kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.kpi-card-box {
   background: #ffffff;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
-  padding: 14px;
+  padding: 16px 10px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
 }
 
-.kpi-title {
-  font-size: 12px;
+.kpi-icon-row {
+  font-size: 20px;
+  margin-bottom: 6px;
+}
+
+.kpi-number-big {
+  font-size: 28px;
+  font-weight: 900;
+  color: #111827;
+  line-height: 1.1;
+  margin-bottom: 6px;
+}
+
+.kpi-label-text {
+  font-size: 10.5px;
+  font-weight: 700;
   color: #6b7280;
   text-transform: uppercase;
+  letter-spacing: 0.3px;
+  line-height: 1.2;
+}
+
+/* Card 4 Pending highlighted in Red (Pic 4) */
+.kpi-card-pending-red {
+  border: 1.5px solid #ef4444;
+}
+
+.kpi-red-number {
+  color: #ef4444;
+}
+
+.kpi-red-label {
+  color: #ef4444;
+}
+
+/* 4. Smart Insights Purple Box (Pic 4) */
+.smart-insights-purple-box {
+  background: #190059;
+  border-radius: 12px;
+  padding: 22px 26px;
+  color: #ffffff;
+}
+
+.smart-insights-title {
+  font-size: 17px;
+  font-weight: 800;
+  color: #ffffff;
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.smart-insights-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.smart-insights-list li {
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #f1f5f9;
+}
+
+.highlight-gold {
+  color: #facc15;
+  font-weight: 700;
+}
+
+/* 5. Middle Two-Column Section (Pic 5) */
+.analytics-2cols-middle {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .analytics-2cols-middle {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-card-white {
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.card-section-title-red {
+  font-size: 15px;
+  font-weight: 700;
+  color: #b91c1c;
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.card-section-title-purple {
+  font-size: 15px;
+  font-weight: 700;
+  color: #190059;
+  margin: 0 0 14px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Pending Events List */
+.pending-events-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pending-event-item-card {
+  background: #fff5f5;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.pending-item-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 140px;
+}
+
+.pending-doc-icon {
+  font-size: 16px;
+}
+
+.pending-event-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.pending-item-mid {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11.5px;
+  color: #4b5563;
+}
+
+.pending-venue {
+  font-weight: 500;
+}
+
+.pending-date {
+  color: #6b7280;
+}
+
+.badge-pending-red {
+  background: #ef4444;
+  color: #ffffff;
+  border-radius: 9999px;
+  padding: 3px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.pending-empty-state {
+  padding: 20px;
+  text-align: center;
+  color: #15803d;
+  font-size: 13px;
   font-weight: 600;
 }
 
-.kpi-value {
-  font-size: 24px;
-  font-weight: 800;
+/* Stats Metric Table */
+.stats-table-wrapper {
+  overflow-x: auto;
+}
+
+.stats-metric-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.stats-metric-table th {
+  background: #f8f6fe;
+  color: #190059;
+  font-weight: 700;
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e9d5ff;
+}
+
+.stats-metric-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  color: #374151;
+}
+
+.stat-value-bold {
+  font-weight: 700;
   color: #111827;
-  margin: 4px 0;
 }
 
-.kpi-subtext {
-  font-size: 11.5px;
-  color: #9ca3af;
-}
-
-.charts-grid-2cols {
+/* 6. Bottom Two-Column Monthly Charts (Pic 5) */
+.analytics-2cols-charts {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
-  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
 }
 
-.chart-card {
+@media (max-width: 800px) {
+  .analytics-2cols-charts {
+    grid-template-columns: 1fr;
+  }
+}
+
+.analytics-chart-box {
   background: #ffffff;
   border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px;
+  border-radius: 10px;
+  padding: 20px;
+}
+
+.chart-box-title-purple {
+  font-size: 15px;
+  font-weight: 700;
+  color: #190059;
+  margin: 0 0 16px 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .chart-canvas-wrapper {
   position: relative;
   height: 220px;
   width: 100%;
-}
-
-.chart-canvas-wrapper-short {
-  position: relative;
-  height: 180px;
-  width: 100%;
-}
-
-.btn-export-pdf {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: #190059;
-  color: #ffffff;
-  border: none;
-  border-radius: 6px;
-  padding: 6px 14px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.analytics-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 14px;
-}
-
-.btn-period-pill {
-  padding: 4px 10px;
-  border: 1px solid #d1d5db;
-  background: #ffffff;
-  border-radius: 6px;
-  font-size: 12.5px;
-  cursor: pointer;
-}
-
-.btn-period-pill.period-active {
-  background: #190059;
-  color: #ffffff;
-  border-color: #190059;
-}
-
-/* Heatmap */
-.heatmap-card {
-  background: #ffffff;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px;
-  margin-top: 14px;
-}
-
-.heatmap-grid {
-  display: grid;
-  grid-template-rows: repeat(7, 11px);
-  grid-auto-flow: column;
-  grid-auto-columns: 11px;
-  gap: 3px;
-  overflow-x: auto;
-  padding: 6px 0;
-}
-
-.heat-cell {
-  width: 11px;
-  height: 11px;
-  border-radius: 2px;
-}
-
-.heat-0 { background: #f3f4f6; }
-.heat-1 { background: #c7d2fe; }
-.heat-2 { background: #818cf8; }
-.heat-3 { background: #3730a3; }
-
-.heatmap-legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 11px;
-  color: #6b7280;
 }
 
 /* ==========================================================================
