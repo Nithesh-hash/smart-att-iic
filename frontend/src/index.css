@@ -1219,88 +1219,353 @@ body {
   cursor: pointer;
 }
 
-/* Admin Panel */
-.admin-panel-container {
-  max-width: 960px;
+/* ==========================================================================
+   ADMIN PANEL (Matching Images 9 & 10)
+   ========================================================================== */
+
+.exact-admin-outer-card {
+  max-width: 1060px;
   margin: 0 auto;
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+  border: 1px solid #e5e7eb;
+  padding: 28px 32px;
 }
 
-.admin-subtabs-row {
+.exact-admin-subtabs-container {
+  margin-top: 16px;
+  margin-bottom: 20px;
+}
+
+.exact-admin-subtabs-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 16px;
-  border-bottom: 1px solid #e5e7eb;
-  padding-bottom: 8px;
+  align-items: flex-end;
 }
 
-.admin-subtab-btn {
+.exact-admin-subtab-btn {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: transparent;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  font-size: 13px;
+  gap: 8px;
+  padding: 8px 18px;
+  background: #f3f0ff;
+  color: #190059;
+  border: 1px solid #ede9fe;
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  font-size: 13.5px;
   font-weight: 600;
-  color: #4b5563;
   cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.admin-subtab-btn.subtab-active {
+.exact-admin-subtab-btn:hover {
+  background: #ebe5ff;
+}
+
+.exact-admin-subtab-btn.subtab-active {
   background: #190059;
   color: #ffffff;
   border-color: #190059;
 }
 
-.admin-filter-bar {
+.subtab-icon-emoji {
+  font-size: 14px;
+}
+
+.exact-admin-tabs-line {
+  height: 2px;
+  background: #190059;
+  width: 100%;
+}
+
+/* Filter Bar */
+.exact-admin-filter-bar {
   display: flex;
-  justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 12px;
   margin-bottom: 12px;
 }
 
-.admin-search-input {
-  height: 36px;
+.exact-admin-input,
+.exact-admin-select {
+  height: 38px;
   border: 1px solid #d1d5db;
   border-radius: 6px;
-  padding: 6px 10px;
+  padding: 0 12px;
   font-size: 13px;
-  width: 280px;
+  color: #111827;
+  background: #ffffff;
+  outline: none;
+  transition: border-color 0.15s;
 }
 
-.admin-data-table {
+.exact-admin-input:focus,
+.exact-admin-select:focus {
+  border-color: #190059;
+}
+
+.exact-admin-input.search-input {
+  min-width: 250px;
+  flex: 1 1 200px;
+}
+
+.exact-admin-date-range {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.exact-admin-input.date-input {
+  width: 145px;
+}
+
+.exact-to-sep {
+  font-size: 13px;
+  color: #4b5563;
+  font-weight: 500;
+}
+
+.exact-btn-clear {
+  height: 38px;
+  background: #6b7280;
+  color: #ffffff;
+  border: none;
+  border-radius: 6px;
+  padding: 0 18px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.exact-btn-clear:hover {
+  background: #4b5563;
+}
+
+/* Subtitle Showing count */
+.exact-showing-count {
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 14px;
+}
+
+/* Exact Admin Table */
+.exact-table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid #e9d5ff;
+}
+
+.exact-admin-table {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
-}
-
-.admin-data-table th {
-  background: #f9fafb;
-  padding: 8px 10px;
   text-align: left;
-  font-weight: 600;
-  color: #374151;
-  border-bottom: 1px solid #e5e7eb;
 }
 
-.admin-data-table td {
-  padding: 8px 10px;
-  border-bottom: 1px solid #f3f4f6;
+.exact-admin-table thead tr {
+  background: #f8f6fe;
+}
+
+.exact-admin-table th {
+  padding: 10px 12px;
+  font-weight: 700;
+  color: #190059;
+  border-bottom: 1px solid #e9d5ff;
+  border-right: 1px solid #f3f0ff;
+  white-space: nowrap;
+}
+
+.exact-admin-table th:last-child {
+  border-right: none;
+}
+
+.exact-admin-table td {
+  padding: 12px;
+  border-bottom: 1px solid #f3f0ff;
+  border-right: 1px solid #f9fafb;
+  vertical-align: middle;
   color: #111827;
 }
 
-.admin-data-table tr:hover td {
-  background: #f9fafb;
+.exact-admin-table td:last-child {
+  border-right: none;
 }
 
-.btn-action-delete {
+.exact-admin-table tr:hover td {
+  background: #faf9ff;
+}
+
+.cell-row-num {
+  text-align: center;
+  font-weight: 600;
+  color: #374151;
+}
+
+.cell-event-name {
+  font-weight: 600;
+  color: #111827;
+}
+
+.cell-coord-name,
+.cell-school,
+.cell-phone {
+  color: #374151;
+}
+
+/* Event Type Badge */
+.exact-event-type-badge {
+  display: inline-block;
+  background: #ede9fe;
+  color: #5b21b6;
+  border-radius: 9999px;
+  padding: 4px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Day Type Multi vs Single */
+.exact-day-type-single {
+  color: #374151;
+  font-size: 12.5px;
+}
+
+.exact-day-type-multi {
+  background: #190059;
+  color: #ffffff;
+  border-radius: 4px;
+  padding: 3px 6px;
+  font-size: 11px;
+  font-weight: 700;
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.1;
+  text-align: center;
+}
+
+/* Date Venue Time Block */
+.exact-dvt-singleday,
+.exact-dvt-multiday {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dvt-day-entry {
+  margin-bottom: 6px;
+}
+
+.dvt-day-entry:last-child {
+  margin-bottom: 0;
+}
+
+.dvt-date-title,
+.dvt-day-title {
+  font-weight: 700;
+  font-size: 12.5px;
+  color: #111827;
+}
+
+.dvt-venue-line {
+  font-size: 12px;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  font-weight: 500;
+}
+
+.red-pin {
+  color: #ef4444;
+}
+
+.dvt-time-line {
+  font-size: 11.5px;
+  color: #6b7280;
+}
+
+/* Delete Button */
+.exact-btn-delete-red {
+  background: #b91c1c;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: background 0.15s;
+}
+
+.exact-btn-delete-red:hover {
+  background: #991b1b;
+}
+
+/* Segregation History Specifics */
+.events-segregated-bullet-line {
+  font-size: 12.5px;
+  color: #111827;
+  line-height: 1.4;
+}
+
+.cell-events-segregated {
+  max-width: 280px;
+}
+
+.exact-zip-link-btn {
   background: transparent;
   border: none;
-  color: #dc2626;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  text-align: left;
+}
+
+.pkg-emoji {
+  font-size: 14px;
+}
+
+.zip-text-underline {
+  color: #2563eb;
+  font-size: 12.5px;
+  font-weight: 500;
+  text-decoration: underline;
+}
+
+.zip-text-underline:hover {
+  color: #1d4ed8;
+}
+
+/* Pagination Row */
+.exact-admin-pagination-row {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+}
+
+.exact-page-square-btn {
+  width: 32px;
+  height: 32px;
+  background: #190059;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* Analytics KPIs */

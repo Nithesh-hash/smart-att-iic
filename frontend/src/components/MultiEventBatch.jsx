@@ -1,27 +1,30 @@
 /**
  * Exact Excel Segregation Component
- * Matches Image 5 from screenshots:
- * - Excel Segregation (Heading)
- * - Step 1 — Select Date Range
- * - [ dd-mm-yyyy ] to [ dd-mm-yyyy ] [ 🔍 Find Events ] button
- * - Followed by Event Slot selection, Daily Spreadsheets Upload, and ZIP generation
+ * Perfectly matches Images 1, 2, and 3 from user screenshots:
+ * - Step 1 — Select Date Range with [ dd-mm-yyyy ] to [ dd-mm-yyyy ] [ 🔍 Find Events ]
+ * - Step 2 — Number of Events to Segregate with dropdown (-- Select --, 1, 2, 3, 4, 5)
+ * - "✅ X event(s) found in range."
+ * - Event 1, Event 2... cards with "Select Event" dropdown formatted as:
+ *   "🗓️ EventName (YYYY-MM-DD | Time | Venue)" or "(Multi-day: Start – End)"
+ * - "📄 Upload Attendance Excel" inner card with "[ + Add File ]" button
+ * - Multiple file input rows per slot
+ * - Full-width "[ ⚡ Segregate All Events ]" button (#190059)
  */
 
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, FileSpreadsheet, CheckCircle2, AlertTriangle, RefreshCw, X, Layers } from 'lucide-react';
 import { getEvents, addSegregationHistory } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
 
 export default function MultiEventBatch() {
-  // Step 1: Date Range Filter (Exact UI from Screenshot 5)
+  // Step 1: Date Range Filter
   const [fromDate, setFromDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() - 30);
+    d.setMonth(d.getMonth() - 6);
     return d.toISOString().split('T')[0];
   });
   const [toDate, setToDate] = useState(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 30);
+    d.setMonth(d.getMonth() + 6);
     return d.toISOString().split('T')[0];
   });
 
@@ -29,31 +32,31 @@ export default function MultiEventBatch() {
   const [matchingEvents, setMatchingEvents] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
 
-  // Step 2: Slots
-  const [slotsCount, setSlotsCount] = useState(2);
-  const [selectedSlots, setSelectedSlots] = useState([
-    { slotId: 1, eventId: '' },
-    { slotId: 2, eventId: '' }
-  ]);
+  // Step 2: Number of Events to Segregate
+  const [numberOfEvents, setNumberOfEvents] = useState(''); // '', '1', '2', '3', '4', '5'
 
-  // Step 3: Daily Uploads { [slotId]: { [dayIndex]: [File, File...] } }
-  const [dayUploads, setDayUploads] = useState({});
+  // Event slots data: { [slotIndex]: { eventId: string, files: [File, File...] } }
+  const [slotData, setSlotData] = useState({});
 
-  // Processing & Feedback
+  // Dynamic file input rows count per slot: { [slotIndex]: number }
+  const [slotFileRowCount, setSlotFileRowCount] = useState({});
+
+  // Processing state
   const [isProcessing, setIsProcessing] = useState(false);
-  const [errorMsg, setErrorMsg] = useState(null);
-  const [batchResult, setBatchResult] = useState(null);
+  const [errorMessage, setErrorMessage] = useState(null);
+  const [successMessage, setSuccessMessage] = useState(null);
 
   useEffect(() => {
     async function load() {
-      const list = await getEvents();
-      setAllRegisteredEvents(list);
+      const events = await getEvents();
+      setAllRegisteredEvents(events);
     }
     load();
   }, []);
 
   const handleFindEvents = () => {
-    setErrorMsg(null);
+    setErrorMessage(null);
+    setSuccessMessage(null);
     setHasSearched(true);
 
     if (!allRegisteredEvents || allRegisteredEvents.length === 0) {
@@ -72,74 +75,103 @@ export default function MultiEventBatch() {
     setMatchingEvents(filtered);
   };
 
-  const handleSlotCountChange = (count) => {
-    setSlotsCount(count);
-    const updated = [];
+  const handleSelectNumberOfEvents = (val) => {
+    setNumberOfEvents(val);
+    const count = parseInt(val, 10) || 0;
+
+    const initialSlots = {};
+    const initialFileCounts = {};
     for (let i = 1; i <= count; i++) {
-      const existing = selectedSlots.find(s => s.slotId === i);
-      updated.push(existing || { slotId: i, eventId: '' });
+      initialSlots[i] = {
+        eventId: slotData[i]?.eventId || '',
+        files: slotData[i]?.files || []
+      };
+      initialFileCounts[i] = slotFileRowCount[i] || 1;
     }
-    setSelectedSlots(updated);
+    setSlotData(initialSlots);
+    setSlotFileRowCount(initialFileCounts);
   };
 
-  const handleSelectEventForSlot = (slotId, eventId) => {
-    setSelectedSlots(prev => prev.map(s => (s.slotId === slotId ? { ...s, eventId } : s)));
+  const handleSelectEventForSlot = (slotIdx, eventId) => {
+    setSlotData(prev => ({
+      ...prev,
+      [slotIdx]: {
+        ...prev[slotIdx],
+        eventId
+      }
+    }));
   };
 
-  const handleFilesAddedToDay = (slotId, dayIndex, filesList) => {
-    const valid = Array.from(filesList).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i));
-    if (valid.length === 0) return;
+  const handleAddFileInputRow = (slotIdx) => {
+    setSlotFileRowCount(prev => ({
+      ...prev,
+      [slotIdx]: (prev[slotIdx] || 1) + 1
+    }));
+  };
 
-    setDayUploads(prev => {
-      const slotData = prev[slotId] || {};
-      const dayData = slotData[dayIndex] || [];
+  const handleFileInputChange = (slotIdx, fileRowIdx, fileList) => {
+    if (!fileList || fileList.length === 0) return;
+    const newFiles = Array.from(fileList);
+
+    setSlotData(prev => {
+      const current = prev[slotIdx] || { eventId: '', files: [] };
+      const existingFiles = [...(current.files || [])];
+
+      // Update or append file at fileRowIdx
+      existingFiles[fileRowIdx] = newFiles[0];
+
       return {
         ...prev,
-        [slotId]: {
-          ...slotData,
-          [dayIndex]: [...dayData, ...valid]
+        [slotIdx]: {
+          ...current,
+          files: existingFiles.filter(Boolean)
         }
       };
     });
   };
 
-  const handleRemoveFile = (slotId, dayIndex, fileIdx) => {
-    setDayUploads(prev => {
-      const slotData = prev[slotId] || {};
-      const dayData = slotData[dayIndex] || [];
-      return {
-        ...prev,
-        [slotId]: {
-          ...slotData,
-          [dayIndex]: dayData.filter((_, i) => i !== fileIdx)
-        }
-      };
-    });
-  };
+  const handleSegregateAll = async () => {
+    setErrorMessage(null);
+    setSuccessMessage(null);
 
-  const handleExecuteSegregation = async () => {
-    setErrorMsg(null);
-    setBatchResult(null);
+    const count = parseInt(numberOfEvents, 10) || 0;
+    if (count === 0) {
+      setErrorMessage('Please select the number of events to segregate.');
+      return;
+    }
 
     const compiledSlots = [];
-    for (const slot of selectedSlots) {
-      if (!slot.eventId) continue;
+    for (let i = 1; i <= count; i++) {
+      const slot = slotData[i];
+      if (!slot || !slot.eventId) {
+        setErrorMessage(`Please select an event for Event ${i}.`);
+        return;
+      }
+
       const ev = allRegisteredEvents.find(e => e.id === slot.eventId);
       if (!ev) continue;
 
-      const uploads = dayUploads[slot.slotId] || {};
-      const hasFiles = Object.values(uploads).some(arr => arr && arr.length > 0);
-      if (hasFiles) {
-        compiledSlots.push({
-          event: ev,
-          dayUploads: uploads
-        });
+      const files = slot.files || [];
+      if (files.length === 0) {
+        setErrorMessage(`Please upload at least one attendance Excel file for Event ${i} (${ev.eventName}).`);
+        return;
       }
-    }
 
-    if (compiledSlots.length === 0) {
-      setErrorMsg('Please select at least one event and upload attendance sheets for its scheduled days.');
-      return;
+      // Map files to days
+      const dayUploads = {};
+      if (ev.isMultiDay && ev.days && ev.days.length > 1) {
+        // If multiple files, allocate per day, or associate files with Day 1, Day 2 etc.
+        ev.days.forEach((d, dIdx) => {
+          dayUploads[d.dayIndex] = files[dIdx] ? [files[dIdx]] : [files[0]];
+        });
+      } else {
+        dayUploads[1] = files;
+      }
+
+      compiledSlots.push({
+        event: ev,
+        dayUploads
+      });
     }
 
     setIsProcessing(true);
@@ -147,242 +179,216 @@ export default function MultiEventBatch() {
     try {
       const result = await processMultiEventBatch(compiledSlots);
 
-      const filename = `all_schools_${fromDate}_to_${toDate}.zip`;
+      // Formatted timestamp zip filename matching Image 5: all_schools_YYYY-MM-DD_HHMMSS.zip
+      const now = new Date();
+      const datePart = now.toISOString().split('T')[0];
+      const timePart = now.toTimeString().split(' ')[0].replace(/:/g, '');
+      const zipName = `all_schools_${datePart}_${timePart}.zip`;
+
+      // Trigger instant browser download
       const url = window.URL.createObjectURL(result.blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;
+      a.download = zipName;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      setBatchResult({
-        filename,
-        eventsCount: compiledSlots.length,
-        totalStudents: result.totalStudents,
-        schoolsCount: result.schoolsCount,
-        filesCount: result.totalFiles
-      });
+      setSuccessMessage(`Segregation completed! Downloaded "${zipName}" covering ${result.schoolsCount} schools and ${result.totalStudents} student records.`);
 
-      // Log into Segregation History
+      // Record in Segregation History Audit Trail
       try {
+        const eventsNamesList = compiledSlots.map(s => {
+          const firstDay = s.event.days?.[0] || {};
+          return `• ${s.event.eventName} | ${firstDay.venue || 'Campus'} | ${firstDay.date || datePart} (${firstDay.startTime || '9:00 AM'} - ${firstDay.endTime || '5:00 PM'})`;
+        }).join('\n');
+
+        const firstCoord = compiledSlots[0]?.event;
+        const coordFormatted = firstCoord
+          ? `${firstCoord.coordinatorName} (${firstCoord.school}${firstCoord.phoneNumber ? ` | ${firstCoord.phoneNumber}` : ''})`
+          : 'Faculty Admin';
+
         await addSegregationHistory({
-          runTitle: `Batch Segregation (${compiledSlots.map(s => s.event.eventName).slice(0, 2).join(', ')})`,
-          dateRange: `${fromDate} to ${toDate}`,
-          eventsProcessed: compiledSlots.length,
+          eventDates: compiledSlots.map(s => s.event.days?.[0]?.date).filter(Boolean).join(', ') || datePart,
+          eventsSegregated: eventsNamesList,
+          coordinatorFormatted,
+          count: compiledSlots.length,
+          zipName,
           totalStudents: result.totalStudents,
           schoolsRepresented: result.schoolsCount,
           filesCount: result.totalFiles,
-          zipName: filename
+          timestamp: new Date().toISOString()
         });
-      } catch (hErr) {
-        console.warn('History recording error:', hErr);
+      } catch (histErr) {
+        console.warn('Could not record history:', histErr);
       }
     } catch (err) {
-      console.error('Batch error:', err);
-      setErrorMsg(err.message || 'Segregation failed.');
+      console.error('Segregation error:', err);
+      setErrorMessage(err.message || 'Segregation failed. Please verify spreadsheet columns.');
     } finally {
       setIsProcessing(false);
     }
   };
 
+  const countNum = parseInt(numberOfEvents, 10) || 0;
+
   return (
     <div className="exact-form-outer-card">
       <h2 className="exact-card-heading">Excel Segregation</h2>
 
-      {errorMsg && (
+      {errorMessage && (
         <div className="exact-alert-box exact-alert-error">
-          {errorMsg}
+          {errorMessage}
         </div>
       )}
 
-      {batchResult && (
+      {successMessage && (
         <div className="exact-alert-box exact-alert-success">
-          <strong>Batch Segregation Completed!</strong> Downloaded <code>{batchResult.filename}</code> covering {batchResult.eventsCount} events, {batchResult.schoolsCount} schools, and {batchResult.totalStudents} total student registrations.
+          {successMessage}
         </div>
       )}
 
-      {/* Step 1 - Select Date Range (Exact from Screenshot 5) */}
-      <div className="step1-exact-section">
-        <h4 className="step1-exact-subtitle">Step 1 — Select Date Range</h4>
-
-        <div className="step1-exact-inputs-row">
+      {/* Step 1 — Select Date Range (Image 1) */}
+      <div className="exact-step-section">
+        <h3 className="exact-step-title">Step 1 — Select Date Range</h3>
+        <div className="exact-date-range-row">
           <input
             type="date"
-            className="exact-date-input"
+            className="exact-date-picker"
             value={fromDate}
             onChange={(e) => setFromDate(e.target.value)}
           />
-
-          <span className="step1-to-text">to</span>
-
+          <span className="exact-to-sep">to</span>
           <input
             type="date"
-            className="exact-date-input"
+            className="exact-date-picker"
             value={toDate}
             onChange={(e) => setToDate(e.target.value)}
           />
-
           <button
             type="button"
             className="exact-btn-find-events"
             onClick={handleFindEvents}
           >
-            <span className="search-icon-symbol">🔍</span>
+            <span className="search-mag-glass">🔍</span>
             <span>Find Events</span>
           </button>
         </div>
       </div>
 
-      {/* Step 2 & 3: Slot Allocation & File Dropzones (revealed after clicking Find Events) */}
+      {/* Step 2 — Number of Events to Segregate (Image 1) */}
       {hasSearched && (
-        <div className="batch-workflow-section mt-6">
-          <div className="step2-exact-section">
-            <h4 className="step1-exact-subtitle">
-              Step 2 — Allocate Event Slots ({matchingEvents.length} event{matchingEvents.length === 1 ? '' : 's'} available in range)
-            </h4>
-
-            <div className="slot-selection-chips">
-              <span className="slot-label-text">Select number of events:</span>
-              {[1, 2, 3, 4, 5].map(n => (
-                <button
-                  key={n}
-                  type="button"
-                  className={`btn-slot-pill ${slotsCount === n ? 'slot-pill-active' : ''}`}
-                  onClick={() => handleSlotCountChange(n)}
-                >
-                  {n}
-                </button>
-              ))}
-            </div>
+        <div className="exact-step-section mt-4">
+          <h3 className="exact-step-title">Step 2 — Number of Events to Segregate</h3>
+          <div className="exact-select-wrapper">
+            <select
+              className="exact-select-dropdown"
+              value={numberOfEvents}
+              onChange={(e) => handleSelectNumberOfEvents(e.target.value)}
+            >
+              <option value="">-- Select --</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
           </div>
 
-          {/* Slots Mapping */}
-          <div className="step3-exact-section mt-4">
-            <h4 className="step1-exact-subtitle">
-              Step 3 — Link Registered Events & Drop Attendance Spreadsheets
-            </h4>
+          <div className="exact-events-found-banner">
+            <span className="green-check-icon">☑</span>
+            <span className="green-found-text">{matchingEvents.length} event(s) found in range.</span>
+          </div>
+        </div>
+      )}
 
-            <div className="slots-grid-list">
-              {selectedSlots.map(slot => {
-                const currentEv = allRegisteredEvents.find(e => e.id === slot.eventId);
-                const slotDays = dayUploads[slot.slotId] || {};
+      {/* Dynamic Event Slots (Images 2 & 3) */}
+      {hasSearched && countNum > 0 && (
+        <div className="exact-slots-container mt-4">
+          {Array.from({ length: countNum }).map((_, idx) => {
+            const slotIdx = idx + 1;
+            const currentSlot = slotData[slotIdx] || { eventId: '', files: [] };
+            const rowCount = slotFileRowCount[slotIdx] || 1;
 
-                return (
-                  <div key={slot.slotId} className="slot-container-card">
-                    <div className="slot-top-row">
-                      <span className="slot-badge-number">Slot {slot.slotId}</span>
+            return (
+              <div key={slotIdx} className="exact-event-slot-card">
+                <h4 className="exact-event-slot-title">Event {slotIdx}</h4>
 
-                      <select
-                        className="exact-form-input slot-dropdown-select"
-                        value={slot.eventId}
-                        onChange={(e) => handleSelectEventForSlot(slot.slotId, e.target.value)}
+                <div className="exact-slot-field-group">
+                  <label className="exact-slot-field-label">Select Event</label>
+                  <select
+                    className="exact-slot-event-select"
+                    value={currentSlot.eventId}
+                    onChange={(e) => handleSelectEventForSlot(slotIdx, e.target.value)}
+                  >
+                    <option value="">-- Select Event --</option>
+                    {matchingEvents.map(ev => {
+                      const firstDay = ev.days?.[0] || {};
+                      const optionLabel = ev.isMultiDay && ev.days?.length > 1
+                        ? `🗓️ ${ev.eventName} (Multi-day: ${ev.days[0]?.date} – ${ev.days[ev.days.length - 1]?.date})`
+                        : `🗓️ ${ev.eventName} (${firstDay.date || 'TBD'} | ${firstDay.startTime || '9:00 AM'} - ${firstDay.endTime || '1:00 PM'} | ${firstDay.venue || 'Campus'})`;
+
+                      return (
+                        <option key={ev.id} value={ev.id}>
+                          {optionLabel}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                {/* Upload Attendance Excel Sub-box (Image 3) */}
+                {currentSlot.eventId && (
+                  <div className="exact-upload-subcard">
+                    <div className="exact-upload-subcard-header">
+                      <div className="upload-header-left">
+                        <span className="doc-icon">📄</span>
+                        <span className="upload-header-title">Upload Attendance Excel</span>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn-add-file-purple"
+                        onClick={() => handleAddFileInputRow(slotIdx)}
                       >
-                        <option value="">-- Choose an Event to Link --</option>
-                        {matchingEvents.map(ev => (
-                          <option key={ev.id} value={ev.id}>
-                            {ev.eventName} ({ev.school} • {ev.eventType} • {ev.isMultiDay ? `${ev.days.length} Days` : 'Single Day'})
-                          </option>
-                        ))}
-                      </select>
+                        + Add File
+                      </button>
                     </div>
 
-                    {currentEv ? (
-                      <div className="slot-days-layout">
-                        <div className="slot-event-summary">
-                          <span><strong>Coordinator:</strong> {currentEv.coordinatorName}</span>
-                          <span><strong>School:</strong> {currentEv.school}</span>
-                          <span><strong>Type:</strong> {currentEv.eventType}</span>
+                    <div className="exact-file-inputs-list">
+                      {Array.from({ length: rowCount }).map((_, fIdx) => (
+                        <div key={fIdx} className="file-input-row">
+                          <input
+                            type="file"
+                            accept=".xlsx, .xls, .csv"
+                            className="exact-native-file-input"
+                            onChange={(e) => handleFileInputChange(slotIdx, fIdx, e.target.files)}
+                          />
                         </div>
-
-                        <div className="slot-days-dropzones-row">
-                          {currentEv.days.map(day => {
-                            const filesForDay = slotDays[day.dayIndex] || [];
-                            const inputId = `batch_file_${slot.slotId}_${day.dayIndex}`;
-
-                            return (
-                              <div key={day.dayIndex} className="exact-day-card">
-                                <div className="exact-day-badge-header">
-                                  <span className="day-index-badge">Day {day.dayIndex}</span>
-                                  <span className="day-date-span">{day.date}</span>
-                                </div>
-
-                                <div className="day-sub-info">
-                                  <span>📍 {day.venue}</span>
-                                  <span>⏰ {day.startTime} – {day.endTime}</span>
-                                </div>
-
-                                <label
-                                  htmlFor={inputId}
-                                  className="exact-day-dropzone"
-                                  onDragOver={(e) => e.preventDefault()}
-                                  onDrop={(e) => {
-                                    e.preventDefault();
-                                    if (e.dataTransfer.files) {
-                                      handleFilesAddedToDay(slot.slotId, day.dayIndex, e.dataTransfer.files);
-                                    }
-                                  }}
-                                >
-                                  <UploadCloud size={20} className="dropzone-mini-icon" />
-                                  <span className="dropzone-mini-text">Drop <code>.xlsx</code> / <code>.csv</code> or click</span>
-                                  <input
-                                    id={inputId}
-                                    type="file"
-                                    multiple
-                                    accept=".xlsx, .xls, .csv"
-                                    style={{ display: 'none' }}
-                                    onChange={(e) => {
-                                      if (e.target.files) {
-                                        handleFilesAddedToDay(slot.slotId, day.dayIndex, e.target.files);
-                                      }
-                                    }}
-                                  />
-                                </label>
-
-                                {filesForDay.length > 0 && (
-                                  <div className="exact-files-sublist">
-                                    {filesForDay.map((f, fIdx) => (
-                                      <div key={fIdx} className="exact-file-tag">
-                                        <FileSpreadsheet size={13} />
-                                        <span className="file-name-truncated" title={f.name}>{f.name}</span>
-                                        <button
-                                          type="button"
-                                          className="btn-remove-mini-file"
-                                          onClick={() => handleRemoveFile(slot.slotId, day.dayIndex, fIdx)}
-                                        >
-                                          ×
-                                        </button>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="slot-empty-guide">
-                        Select an event from the dropdown to display its scheduled sessions.
-                      </div>
-                    )}
+                      ))}
+                    </div>
                   </div>
-                );
-              })}
-            </div>
+                )}
+              </div>
+            );
+          })}
 
-            {/* Execute Segregation Button */}
-            <div className="exact-submit-wrapper mt-6">
-              <button
-                type="button"
-                className="exact-btn-submit"
-                onClick={handleExecuteSegregation}
-                disabled={isProcessing}
-              >
-                {isProcessing ? 'Processing Segregation & Packaging ZIP...' : 'Execute Segregation & Download ZIP'}
-              </button>
-            </div>
+          {/* Bottom Segregate All Events Button (Images 2 & 3) */}
+          <div className="exact-segregate-btn-wrapper">
+            <button
+              type="button"
+              className="exact-btn-segregate-all"
+              onClick={handleSegregateAll}
+              disabled={isProcessing}
+            >
+              <span className="lightning-icon">⚡</span>
+              <span>{isProcessing ? 'Segregating Attendance Sheets...' : 'Segregate All Events'}</span>
+            </button>
+          </div>
+
+          <div className="exact-events-found-banner mt-2">
+            <span className="green-check-icon">☑</span>
+            <span className="green-found-text">{matchingEvents.length} event(s) found in range.</span>
           </div>
         </div>
       )}

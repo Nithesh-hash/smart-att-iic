@@ -1,46 +1,43 @@
 /**
  * Admin Sub-Module 1: Events Management Table
- * Features:
- * - Paginated table of all registered events
- * - Search bar across event name, coordinator, venue, school
- * - Filters by date range & event type
- * - Sort options (by date, name, school)
- * - Delete event with immediate UI synchronization & confirmation
+ * Matches exact UI from Screenshot (media_1793273808909_e4365f8f.png):
+ * - Search bar: [ Search event name / venue ]
+ * - Date Range: [ dd-mm-yyyy ] to [ dd-mm-yyyy ]
+ * - Dropdown: [ All Event Types ▾ ]
+ * - Dropdown: [ Newest First ▾ ]
+ * - Button: [ Clear ] (gray button)
+ * - Subtitle: Showing 1–X of X events
+ * - Table Columns:
+ *   # | Event Name | Faculty Coordinator | School | Phone Number | Event Type (pill) | Day Type | Date, Venue & Time (with 📍 pin) | Action ([ 🗑️ Delete ])
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import {
-  Calendar,
-  Search,
-  Filter,
-  Trash2,
-  ChevronLeft,
-  ChevronRight,
-  ArrowUpDown,
-  Building,
-  User,
-  AlertCircle,
-  Clock,
-  Layers,
-  MapPin
-} from 'lucide-react';
-import { getEvents, deleteEvent, EVENT_TYPES, SCHOOL_OPTIONS } from '../../services/dataService';
+import { Trash2 } from 'lucide-react';
+import { getEvents, deleteEvent, EVENT_TYPES } from '../../services/dataService';
+
+// Format YYYY-MM-DD to DD-MM-YYYY
+function formatDateDDMMYYYY(dateStr) {
+  if (!dateStr) return '';
+  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
+  const parts = dateStr.split('-');
+  if (parts.length === 3 && parts[0].length === 4) {
+    return `${parts[2]}-${parts[1]}-${parts[0]}`;
+  }
+  return dateStr;
+}
 
 export default function EventsManagement() {
   const [events, setEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filters & Search
+  // Filters matching screenshot
   const [searchQuery, setSearchQuery] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
   const [selectedType, setSelectedType] = useState('ALL');
-  const [selectedSchool, setSelectedSchool] = useState('ALL');
-  const [sortBy, setSortBy] = useState('date-desc'); // date-desc, date-asc, name-asc
+  const [sortBy, setSortBy] = useState('newest'); // newest, oldest, name
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
-
-  // Deletion modal
+  // Delete modal candidate
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
   const loadEvents = async () => {
@@ -59,30 +56,44 @@ export default function EventsManagement() {
     loadEvents();
   }, []);
 
-  // Filtered & Sorted Events
+  const handleClear = () => {
+    setSearchQuery('');
+    setFromDate('');
+    setToDate('');
+    setSelectedType('ALL');
+    setSortBy('newest');
+  };
+
   const filteredEvents = useMemo(() => {
     let result = [...events];
 
-    // Search Query (Event name, coordinator, venue, school)
+    // Search query: event name or venue
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
       result = result.filter(ev => {
         const nameMatch = ev.eventName?.toLowerCase().includes(q);
         const coordMatch = ev.coordinatorName?.toLowerCase().includes(q);
-        const schoolMatch = ev.school?.toLowerCase().includes(q);
         const venueMatch = ev.days?.some(d => d.venue?.toLowerCase().includes(q));
-        return nameMatch || coordMatch || schoolMatch || venueMatch;
+        const schoolMatch = ev.school?.toLowerCase().includes(q);
+        return nameMatch || coordMatch || venueMatch || schoolMatch;
       });
     }
 
-    // Type filter
-    if (selectedType !== 'ALL') {
-      result = result.filter(ev => ev.eventType === selectedType);
+    // Date range filter
+    if (fromDate) {
+      result = result.filter(ev => {
+        return ev.days?.some(d => d.date && d.date >= fromDate);
+      });
+    }
+    if (toDate) {
+      result = result.filter(ev => {
+        return ev.days?.some(d => d.date && d.date <= toDate);
+      });
     }
 
-    // School filter
-    if (selectedSchool !== 'ALL') {
-      result = result.filter(ev => ev.school === selectedSchool);
+    // Event type filter
+    if (selectedType !== 'ALL') {
+      result = result.filter(ev => ev.eventType === selectedType);
     }
 
     // Sorting
@@ -90,21 +101,14 @@ export default function EventsManagement() {
       const dateA = a.days?.[0]?.date || a.createdAt || '';
       const dateB = b.days?.[0]?.date || b.createdAt || '';
 
-      if (sortBy === 'date-desc') return dateB.localeCompare(dateA);
-      if (sortBy === 'date-asc') return dateA.localeCompare(dateB);
-      if (sortBy === 'name-asc') return (a.eventName || '').localeCompare(b.eventName || '');
+      if (sortBy === 'newest') return dateB.localeCompare(dateA);
+      if (sortBy === 'oldest') return dateA.localeCompare(dateB);
+      if (sortBy === 'name') return (a.eventName || '').localeCompare(b.eventName || '');
       return 0;
     });
 
     return result;
-  }, [events, searchQuery, selectedType, selectedSchool, sortBy]);
-
-  // Paginated Slices
-  const totalPages = Math.ceil(filteredEvents.length / pageSize) || 1;
-  const paginatedEvents = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredEvents.slice(start, start + pageSize);
-  }, [filteredEvents, currentPage]);
+  }, [events, searchQuery, fromDate, toDate, selectedType, sortBy]);
 
   const handleDeleteConfirm = async () => {
     if (!deleteCandidate) return;
@@ -118,125 +122,155 @@ export default function EventsManagement() {
   };
 
   return (
-    <div className="admin-events-management">
-      <div className="admin-filter-bar">
-        {/* Search Input */}
-        <div className="admin-search-box">
-          <Search size={18} className="search-icon" />
+    <div className="exact-admin-events-tab">
+      {/* Exact Filter Row from Screenshot */}
+      <div className="exact-admin-filter-bar">
+        {/* Search input */}
+        <input
+          type="text"
+          className="exact-admin-input search-input"
+          placeholder="Search event name / venue"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+
+        {/* Date range pickers */}
+        <div className="exact-admin-date-range">
           <input
-            type="text"
-            className="admin-search-input"
-            placeholder="Search by event, coordinator, school, or venue..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
+            type="date"
+            className="exact-admin-input date-input"
+            value={fromDate}
+            onChange={(e) => setFromDate(e.target.value)}
+          />
+          <span className="exact-to-sep">to</span>
+          <input
+            type="date"
+            className="exact-admin-input date-input"
+            value={toDate}
+            onChange={(e) => setToDate(e.target.value)}
           />
         </div>
 
-        {/* Filters Group */}
-        <div className="admin-filters-group">
-          <select
-            className="admin-filter-select"
-            value={selectedType}
-            onChange={(e) => {
-              setSelectedType(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="ALL">All Event Types</option>
-            {EVENT_TYPES.map(t => (
-              <option key={t} value={t}>{t}</option>
-            ))}
-          </select>
+        {/* Event Types dropdown */}
+        <select
+          className="exact-admin-select"
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+        >
+          <option value="ALL">All Event Types</option>
+          {EVENT_TYPES.map(t => (
+            <option key={t} value={t}>{t}</option>
+          ))}
+        </select>
 
-          <select
-            className="admin-filter-select"
-            value={selectedSchool}
-            onChange={(e) => {
-              setSelectedSchool(e.target.value);
-              setCurrentPage(1);
-            }}
-          >
-            <option value="ALL">All Schools</option>
-            {SCHOOL_OPTIONS.map(s => (
-              <option key={s} value={s}>{s}</option>
-            ))}
-          </select>
+        {/* Sort dropdown */}
+        <select
+          className="exact-admin-select"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="newest">Newest First</option>
+          <option value="oldest">Oldest First</option>
+          <option value="name">Event Name (A-Z)</option>
+        </select>
 
-          <select
-            className="admin-filter-select"
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value)}
-          >
-            <option value="date-desc">Newest First</option>
-            <option value="date-asc">Oldest First</option>
-            <option value="name-asc">Alphabetical (A-Z)</option>
-          </select>
-        </div>
+        {/* Clear button */}
+        <button
+          type="button"
+          className="exact-btn-clear"
+          onClick={handleClear}
+        >
+          Clear
+        </button>
+      </div>
+
+      {/* Subtitle counter matching Screenshot: Showing 1–4 of 4 events */}
+      <div className="exact-showing-count">
+        Showing {filteredEvents.length > 0 ? `1–${filteredEvents.length}` : '0'} of {filteredEvents.length} events
       </div>
 
       {/* Events Table */}
-      <div className="table-responsive-wrapper mt-4">
-        <table className="admin-data-table">
+      <div className="exact-table-responsive">
+        <table className="exact-admin-table">
           <thead>
             <tr>
-              <th>#</th>
-              <th>Event Title</th>
-              <th>Type</th>
+              <th style={{ width: '36px' }}>#</th>
+              <th>Event Name</th>
+              <th>Faculty Coordinator</th>
               <th>School</th>
-              <th>Coordinator</th>
-              <th>Schedule / Venue</th>
-              <th>Duration</th>
-              <th className="text-right">Actions</th>
+              <th>Phone Number</th>
+              <th>Event Type</th>
+              <th>Day Type</th>
+              <th>Date, Venue & Time</th>
+              <th style={{ width: '90px' }}>Action</th>
             </tr>
           </thead>
           <tbody>
-            {paginatedEvents.length > 0 ? (
-              paginatedEvents.map((ev, idx) => {
-                const rowNum = (currentPage - 1) * pageSize + idx + 1;
+            {filteredEvents.length > 0 ? (
+              filteredEvents.map((ev, idx) => {
                 const firstDay = ev.days?.[0] || {};
+                const isMulti = Boolean(ev.isMultiDay || (ev.days && ev.days.length > 1));
+
                 return (
                   <tr key={ev.id || idx}>
-                    <td className="cell-num">{rowNum}</td>
+                    <td className="cell-row-num">{idx + 1}</td>
+                    <td className="cell-event-name">{ev.eventName}</td>
+                    <td className="cell-coord-name">{ev.coordinatorName}</td>
+                    <td className="cell-school">{ev.school}</td>
+                    <td className="cell-phone">{ev.coordinatorContact || '–'}</td>
                     <td>
-                      <div className="event-title-cell">
-                        <span className="event-name-bold">{ev.eventName}</span>
-                      </div>
+                      <span className="exact-event-type-badge">{ev.eventType}</span>
+                    </td>
+                    <td className="cell-day-type">
+                      {isMulti ? (
+                        <div className="exact-day-type-multi">
+                          <span>Multi-</span>
+                          <span>day</span>
+                        </div>
+                      ) : (
+                        <span className="exact-day-type-single">Single Day</span>
+                      )}
                     </td>
                     <td>
-                      <span className="type-badge">{ev.eventType}</span>
+                      {isMulti && ev.days && ev.days.length > 0 ? (
+                        <div className="exact-dvt-multiday">
+                          {ev.days.map((d, dIdx) => (
+                            <div key={dIdx} className="dvt-day-entry">
+                              <div className="dvt-day-title">Day {d.dayIndex || dIdx + 1} {formatDateDDMMYYYY(d.date)}</div>
+                              <div className="dvt-venue-line">
+                                <span className="red-pin">📍</span> {d.venue || 'Campus'}
+                              </div>
+                              {d.startTime && (
+                                <div className="dvt-time-line">
+                                  {d.startTime} - {d.endTime || ''}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="exact-dvt-singleday">
+                          <div className="dvt-date-title">{formatDateDDMMYYYY(firstDay.date)}</div>
+                          <div className="dvt-venue-line">
+                            <span className="red-pin">📍</span> {firstDay.venue || 'Campus'}
+                          </div>
+                          {firstDay.startTime && (
+                            <div className="dvt-time-line">
+                              {firstDay.startTime} - {firstDay.endTime || ''}
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </td>
                     <td>
-                      <span className="school-badge-cell">{ev.school}</span>
-                    </td>
-                    <td>
-                      <div className="coord-info-cell">
-                        <span>{ev.coordinatorName}</span>
-                        {ev.coordinatorContact && (
-                          <span className="coord-phone-sub">{ev.coordinatorContact}</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>
-                      <div className="schedule-info-cell">
-                        <span>📅 {firstDay.date || 'TBD'}</span>
-                        <span className="schedule-venue-sub">📍 {firstDay.venue || 'Campus'}</span>
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`duration-badge ${ev.isMultiDay ? 'duration-multi' : 'duration-single'}`}>
-                        {ev.isMultiDay ? `${ev.days?.length || 2} Days` : 'Single Day'}
-                      </span>
-                    </td>
-                    <td className="text-right">
                       <button
-                        className="btn-action-delete"
+                        type="button"
+                        className="exact-btn-delete-red"
                         onClick={() => setDeleteCandidate(ev)}
                         title="Delete Event"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={13} />
+                        <span>Delete</span>
                       </button>
                     </td>
                   </tr>
@@ -244,8 +278,8 @@ export default function EventsManagement() {
               })
             ) : (
               <tr>
-                <td colSpan="8" className="table-empty-row">
-                  {isLoading ? 'Loading events...' : 'No registered events match the selected filters.'}
+                <td colSpan="9" className="exact-table-empty">
+                  {isLoading ? 'Loading events...' : 'No registered events match the filters.'}
                 </td>
               </tr>
             )}
@@ -253,68 +287,31 @@ export default function EventsManagement() {
         </table>
       </div>
 
-      {/* Pagination Footer */}
-      <div className="admin-pagination-footer">
-        <div className="pagination-info">
-          Showing <strong>{filteredEvents.length > 0 ? (currentPage - 1) * pageSize + 1 : 0}</strong> to{' '}
-          <strong>{Math.min(currentPage * pageSize, filteredEvents.length)}</strong> of{' '}
-          <strong>{filteredEvents.length}</strong> events
-        </div>
-
-        <div className="pagination-buttons">
-          <button
-            className="btn-pagination-nav"
-            onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-            disabled={currentPage === 1}
-          >
-            <ChevronLeft size={16} /> Previous
-          </button>
-          <span className="pagination-page-indicator">
-            Page {currentPage} of {totalPages}
-          </span>
-          <button
-            className="btn-pagination-nav"
-            onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-            disabled={currentPage >= totalPages}
-          >
-            Next <ChevronRight size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Deletion Confirmation Modal */}
+      {/* Delete Confirmation Modal */}
       {deleteCandidate && (
         <div className="modal-backdrop">
           <div className="modal-card modal-card-small">
             <div className="modal-header">
-              <div className="modal-title-group">
-                <AlertCircle size={24} className="modal-icon-danger" />
-                <div>
-                  <h3 className="modal-title">Confirm Event Deletion</h3>
-                  <p className="modal-desc">
-                    Are you sure you want to delete this event from the portal registry?
-                  </p>
-                </div>
-              </div>
+              <h3 className="modal-title" style={{ color: '#b91c1c' }}>Confirm Event Deletion</h3>
+              <p className="modal-desc" style={{ marginTop: '8px' }}>
+                Are you sure you want to permanently delete <strong>{deleteCandidate.eventName}</strong>?
+              </p>
             </div>
-
-            <div className="delete-target-preview">
-              <strong>{deleteCandidate.eventName}</strong>
-              <span>{deleteCandidate.school} • {deleteCandidate.eventType}</span>
-            </div>
-
-            <div className="modal-footer-dual">
+            <div className="modal-footer-dual" style={{ marginTop: '20px', display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
               <button
-                className="btn-modal-cancel"
+                type="button"
+                className="exact-btn-clear"
                 onClick={() => setDeleteCandidate(null)}
               >
                 Cancel
               </button>
               <button
-                className="btn-modal-delete-danger"
+                type="button"
+                className="exact-btn-delete-red"
+                style={{ padding: '8px 18px', fontSize: '13px' }}
                 onClick={handleDeleteConfirm}
               >
-                Delete Event
+                Confirm Delete
               </button>
             </div>
           </div>
@@ -323,4 +320,3 @@ export default function EventsManagement() {
     </div>
   );
 }
-

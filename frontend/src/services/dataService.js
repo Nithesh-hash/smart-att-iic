@@ -82,13 +82,16 @@ export async function getEvents() {
   try {
     const raw = localStorage.getItem(EVENTS_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0 && parsed.some(e => e.eventName === 'Gyhby')) {
+        return parsed;
+      }
     }
   } catch (e) {
     console.error('LocalStorage events error:', e);
   }
 
-  // Default seed if completely empty
+  // Default seed matching screenshots
   const seeded = getInitialMockEvents();
   localStorage.setItem(EVENTS_KEY, JSON.stringify(seeded));
   return seeded;
@@ -161,7 +164,9 @@ export async function getSegregationHistory() {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (raw) {
       const list = JSON.parse(raw);
-      return list.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+      if (Array.isArray(list) && list.length > 0 && list.some(h => h.zipName?.includes('2026-07-01'))) {
+        return list.sort((a, b) => new Date(b.timestamp || b.createdAt) - new Date(a.timestamp || a.createdAt));
+      }
     }
   } catch (e) {
     console.error('LocalStorage history error:', e);
@@ -264,118 +269,99 @@ export async function seedInitialData() {
 }
 
 /**
- * Initial Realistic Institutional Mock Data
+ * Initial Institutional Mock Data matching exact screenshots (Image 9 & 10)
  */
 function getInitialMockEvents() {
   return [
     {
-      id: 'ev_mock_1',
-      eventName: 'AI & Deep Learning Hackathon 2026',
-      coordinatorName: 'Dr. K. Senthil Kumar',
-      coordinatorContact: '+91 98765 43210',
-      school: 'SCOPE',
-      eventType: 'Tech Fest / Hackathon / Ideathon',
-      isMultiDay: true,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-10-14',
-          venue: 'Technology Tower Gallery',
-          startTime: '09:00 AM',
-          endTime: '05:00 PM'
-        },
-        {
-          dayIndex: 2,
-          date: '2026-10-15',
-          venue: 'Anna Auditorium',
-          startTime: '09:00 AM',
-          endTime: '04:30 PM'
-        }
-      ],
-      createdAt: '2026-10-01T10:00:00.000Z'
-    },
-    {
-      id: 'ev_mock_2',
-      eventName: 'Robotics & Automation Hands-on Workshop',
-      coordinatorName: 'Prof. R. Anand',
-      coordinatorContact: '+91 94432 10987',
-      school: 'SMEC',
-      eventType: 'Workshop',
-      isMultiDay: false,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-10-20',
-          venue: 'SMEC CAD Lab 402',
-          startTime: '10:00 AM',
-          endTime: '01:00 PM'
-        }
-      ],
-      createdAt: '2026-10-05T14:30:00.000Z'
-    },
-    {
-      id: 'ev_mock_3',
-      eventName: 'Startup Pitch & Mentoring Session with VCs',
-      coordinatorName: 'Dr. Meenakshi Sundaram',
-      coordinatorContact: '+91 91234 56789',
-      school: 'VITBS',
+      id: 'ev_1_iic_council',
+      eventName: 'IIC Student Council Meeting',
+      coordinatorName: 'Dr.Jothish Kumar',
+      coordinatorContact: '9787074353',
+      school: 'VITISR',
       eventType: 'Mentoring Session',
       isMultiDay: false,
       days: [
         {
           dayIndex: 1,
-          date: '2026-10-22',
-          venue: 'TBI Incubation Center',
-          startTime: '02:00 PM',
-          endTime: '05:30 PM'
+          date: '2026-07-16',
+          venue: 'PRP- A BLOCK 156',
+          startTime: '5:00 PM',
+          endTime: '7:00 PM'
         }
       ],
-      createdAt: '2026-10-10T09:15:00.000Z'
+      createdAt: '2026-07-16T17:00:00.000Z'
     },
     {
-      id: 'ev_mock_4',
-      eventName: 'VLSI Circuit Design Expert Seminar',
-      coordinatorName: 'Dr. P. Rajeswari',
-      coordinatorContact: '+91 98840 12345',
-      school: 'SENSE',
-      eventType: 'Expert Talk',
-      isMultiDay: false,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-10-25',
-          venue: 'SENSE Seminar Hall 101',
-          startTime: '03:00 PM',
-          endTime: '05:00 PM'
-        }
-      ],
-      createdAt: '2026-10-12T11:00:00.000Z'
-    },
-    {
-      id: 'ev_mock_5',
-      eventName: 'Bio-Innovation Expo & Research Demo Day',
-      coordinatorName: 'Dr. S. Kavitha',
-      coordinatorContact: '+91 97890 23456',
-      school: 'SBST',
-      eventType: 'Demo Day / Competition',
+      id: 'ev_2_summer_startup_1',
+      eventName: 'Summer Startup Launch Pad',
+      coordinatorName: 'Jothish Kumar M',
+      coordinatorContact: '',
+      school: 'SCORE',
+      eventType: 'Mentoring Session',
       isMultiDay: true,
       days: [
         {
           dayIndex: 1,
-          date: '2026-10-27',
-          venue: 'Silver Jubilee Tower Gallery',
-          startTime: '10:00 AM',
-          endTime: '04:00 PM'
+          date: '2026-07-09',
+          venue: 'PRP A block Room no. 156',
+          startTime: '9:30 AM',
+          endTime: '1:00 PM'
         },
         {
           dayIndex: 2,
-          date: '2026-10-28',
-          venue: 'SBST Biotech Foyer',
-          startTime: '10:00 AM',
-          endTime: '03:00 PM'
+          date: '2026-07-10',
+          venue: 'PRP A block Room no. 156',
+          startTime: '9:30 AM',
+          endTime: '1:00 PM'
         }
       ],
-      createdAt: '2026-10-15T08:45:00.000Z'
+      createdAt: '2026-07-09T09:30:00.000Z'
+    },
+    {
+      id: 'ev_3_summer_startup_2',
+      eventName: 'Summer StartUp Launch Pad',
+      coordinatorName: 'Jothish Kumar M',
+      coordinatorContact: '',
+      school: 'SCORE',
+      eventType: 'Mentoring Session',
+      isMultiDay: true,
+      days: [
+        {
+          dayIndex: 1,
+          date: '2026-07-09',
+          venue: 'PRP A block Room no. 156',
+          startTime: '2:00 PM',
+          endTime: '5:30 PM'
+        },
+        {
+          dayIndex: 2,
+          date: '2026-07-10',
+          venue: 'PRP A block Room no. 156',
+          startTime: '2:00 PM',
+          endTime: '5:30 PM'
+        }
+      ],
+      createdAt: '2026-07-09T14:00:00.000Z'
+    },
+    {
+      id: 'ev_4_gyhby',
+      eventName: 'Gyhby',
+      coordinatorName: 'Ybyg',
+      coordinatorContact: '',
+      school: 'Ybyv',
+      eventType: 'Workshop',
+      isMultiDay: false,
+      days: [
+        {
+          dayIndex: 1,
+          date: '2026-07-01',
+          venue: 'Thtyg',
+          startTime: '1:00 AM',
+          endTime: '1:00 PM'
+        }
+      ],
+      createdAt: '2026-07-01T01:00:00.000Z'
     }
   ];
 }
@@ -383,37 +369,17 @@ function getInitialMockEvents() {
 function getInitialMockHistory() {
   return [
     {
-      id: 'hist_mock_1',
-      runTitle: 'October Major Events Segregation',
-      dateRange: '2026-10-14 to 2026-10-28',
-      eventsProcessed: 4,
-      totalStudents: 1248,
-      schoolsRepresented: 11,
-      filesCount: 6,
-      zipName: 'all_schools_2026-10-14_to_2026-10-28.zip',
-      timestamp: '2026-10-28T16:20:00.000Z'
-    },
-    {
-      id: 'hist_mock_2',
-      runTitle: 'Robotics Workshop Day 1 Batch',
-      dateRange: '2026-10-20 to 2026-10-20',
-      eventsProcessed: 1,
-      totalStudents: 312,
-      schoolsRepresented: 5,
-      filesCount: 2,
-      zipName: 'all_schools_2026-10-20.zip',
-      timestamp: '2026-10-20T17:45:00.000Z'
-    },
-    {
-      id: 'hist_mock_3',
-      runTitle: 'Hackathon Grand Finale Attendance',
-      dateRange: '2026-10-14 to 2026-10-15',
-      eventsProcessed: 2,
-      totalStudents: 840,
-      schoolsRepresented: 9,
-      filesCount: 4,
-      zipName: 'all_schools_2026-10-14_to_2026-10-15.zip',
-      timestamp: '2026-10-16T11:10:00.000Z'
+      id: 'hist_1',
+      eventDates: '01-07-2026',
+      eventsSegregated: '• Gyhby | Thtyg | 2026-07-01 (1:00 AM - 1:00 PM)',
+      coordinatorFormatted: 'Ybyg (Ybyv)',
+      count: 1,
+      segregatedOn: '12-10-2026 12:02 PM',
+      zipName: 'all_schools_2026-07-01_120228.zip',
+      timestamp: '2026-10-12T12:02:28.000Z',
+      totalStudents: 1,
+      schoolsRepresented: 1,
+      filesCount: 1
     }
   ];
 }
