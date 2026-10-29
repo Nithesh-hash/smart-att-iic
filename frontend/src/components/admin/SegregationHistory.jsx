@@ -102,15 +102,23 @@ export default function SegregationHistory() {
 
     // Date range filter
     if (fromDate) {
+      const fromD = new Date(fromDate);
+      fromD.setHours(0, 0, 0, 0);
       result = result.filter(item => {
-        const d = item.eventDates || item.timestamp;
-        return d && d >= fromDate;
+        const dStr = item.timestamp || item.eventDates || item.segregatedOn;
+        if (!dStr) return true;
+        const d = new Date(dStr);
+        return isNaN(d.getTime()) ? true : d >= fromD;
       });
     }
     if (toDate) {
+      const toD = new Date(toDate);
+      toD.setHours(23, 59, 59, 999);
       result = result.filter(item => {
-        const d = item.eventDates || item.timestamp;
-        return d && d <= toDate;
+        const dStr = item.timestamp || item.eventDates || item.segregatedOn;
+        if (!dStr) return true;
+        const d = new Date(dStr);
+        return isNaN(d.getTime()) ? true : d <= toD;
       });
     }
 

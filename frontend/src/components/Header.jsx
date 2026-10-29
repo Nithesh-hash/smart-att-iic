@@ -22,6 +22,22 @@ export default function Header({
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
+  const handleInstallPWA = async () => {
+    if (window.deferredPWAInstallPrompt) {
+      try {
+        window.deferredPWAInstallPrompt.prompt();
+        const choice = await window.deferredPWAInstallPrompt.userChoice;
+        if (choice.outcome === 'accepted') {
+          window.deferredPWAInstallPrompt = null;
+        }
+      } catch (e) {
+        console.warn('Install prompt error:', e);
+      }
+    } else {
+      alert('To install as WebApp:\n• Desktop: Click the Install icon (💻) in the URL address bar or Menu ⋮ → "Install Smart Attendance"\n• Mobile: Tap Menu ⋮ or Share → "Add to Home Screen"');
+    }
+  };
+
   // Close dropdown on outside click
   useEffect(() => {
     function handleClickOutside(event) {
@@ -58,6 +74,18 @@ export default function Header({
                 </div>
                 <h3 className="profile-dropdown-name">Attendance</h3>
                 <p className="profile-dropdown-sub">VIT-IST Admin</p>
+              </div>
+
+              {/* Install as Webapp Button (Between VIT-IST admin and Signout) */}
+              <div className="profile-dropdown-pwa-action">
+                <button
+                  type="button"
+                  className="btn-install-webapp"
+                  onClick={handleInstallPWA}
+                >
+                  <span className="pwa-btn-icon">📱</span>
+                  <span>Install as WebApp</span>
+                </button>
               </div>
 
               <div className="profile-dropdown-action">

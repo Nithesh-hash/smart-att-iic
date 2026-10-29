@@ -59,13 +59,10 @@ export default function QuickSegregation() {
   const [isAuthorized, setIsAuthorized] = useState(false);
 
   const handleOpenSettings = () => {
-    if (isAuthorized) {
-      setIsModalOpen(true);
-    } else {
-      setAuthPin('');
-      setAuthError('');
-      setIsAuthModalOpen(true);
-    }
+    // Always prompt for the PIN code every time clicked
+    setAuthPin('');
+    setAuthError('');
+    setIsAuthModalOpen(true);
   };
 
   const handleVerifyPin = (e) => {
@@ -347,14 +344,21 @@ export default function QuickSegregation() {
 
         // Audit Trail: Record in History
         try {
+          const eventsListFormatted = previewData?.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.date || 'Today'} (${e.startTime || '9:00 AM'} - ${e.endTime || '5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
+          const eventDateVal = previewData?.events?.[0]?.date || previewData?.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
+
           await addSegregationHistory({
-            runTitle: previewData?.events?.map(e => e.eventName).slice(0, 2).join(', ') || 'Quick Segregation Run',
+            eventDates: eventDateVal,
+            eventsSegregated: eventsListFormatted,
+            coordinatorFormatted: 'Faculty Admin (VIT-IST)',
+            count: previewData?.events?.length || 1,
             dateRange: `${previewData?.dateRange?.firstDateStr || 'N/A'} - ${previewData?.dateRange?.lastDateStr || 'N/A'}`,
             eventsProcessed: previewData?.events?.length || 1,
-            totalStudents: result.totalStudents,
-            schoolsRepresented: result.schoolsCount,
+            totalStudents: result.totalStudents || 0,
+            schoolsRepresented: result.schoolsCount || 0,
             filesCount: files.length,
-            zipName: result.filename
+            zipName: result.filename,
+            timestamp: new Date().toISOString()
           });
         } catch (histErr) {
           console.warn('Could not record segregation run in history:', histErr);

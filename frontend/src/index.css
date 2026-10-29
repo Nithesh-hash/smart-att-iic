@@ -3341,3 +3341,108 @@ input:checked + .switch-slider:before {
   color: #64748b;
   white-space: nowrap;
 }
+
+
+/* ==========================================================================
+   IMAGE 3 EXCEL SEGREGATION STYLES & PWA INSTALL BUTTON
+   ========================================================================== */
+.btn-add-file-slot {
+  height: 30px;
+  padding: 0 14px;
+  background: #190059;
+  color: #ffffff;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-add-file-slot:hover {
+  background: #2a007a;
+}
+
+.exact-file-input-box {
+  background: #ffffff;
+  border: 1px solid #d1d5db;
+  border-radius: 6px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  height: 42px;
+  box-sizing: border-box;
+}
+
+.exact-native-file-input-hidden {
+  display: none !important;
+}
+
+.btn-choose-file-native {
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  padding: 4px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #1e293b;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.btn-choose-file-native:hover {
+  background: #e2e8f0;
+}
+
+.chosen-file-display-name {
+  font-size: 13.5px;
+  color: #374151;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.exact-events-found-banner-bottom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+/* PWA Button in User Profile Dropdown */
+.profile-dropdown-pwa-action {
+  width: 100%;
+  margin-bottom: 10px;
+}
+
+.btn-install-webapp {
+  width: 100%;
+  height: 38px;
+  border-radius: 6px;
+  background: #f0f4ff;
+  color: #190059;
+  border: 1.5px solid #c7d2fe;
+  font-size: 13.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-install-webapp:hover {
+  background: #e0e7ff;
+  color: #1e1b4b;
+  border-color: #a5b4fc;
+}
+
+.pwa-btn-icon {
+  font-size: 15px;
+}

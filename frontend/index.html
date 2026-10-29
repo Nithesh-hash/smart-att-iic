@@ -7,7 +7,26 @@
     <meta name="description" content="Intelligent Excel attendance segregator by school and branch for VIT-IST events. Process multiple Excel attendance sheets, deduplicate, and export clean formatted school workbooks." />
 
     <!-- App Favicon -->
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/pwa-logo.png" />
+    <link rel="apple-touch-icon" href="/pwa-logo.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#190059" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+    <script>
+      // Suppress automatic browser PWA install banner
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPWAInstallPrompt = e;
+        window.dispatchEvent(new CustomEvent('pwa_prompt_ready'));
+      });
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js').catch(function() {});
+        });
+      }
+    </script>
 
 
     <!-- Google Fonts -->

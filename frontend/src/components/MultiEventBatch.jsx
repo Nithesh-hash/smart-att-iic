@@ -496,7 +496,7 @@ export default function MultiEventBatch() {
                       </select>
                     </div>
 
-                    {/* Upload Attendance Excel (Clean single input - No "+ Add File" button) */}
+                    {/* Upload Attendance Excel (Matching Image 3) */}
                     {currentSlot.eventId && (
                       <div className="exact-upload-subcard">
                         <div className="exact-upload-subcard-header">
@@ -504,25 +504,33 @@ export default function MultiEventBatch() {
                             <span className="doc-icon">📄</span>
                             <span className="upload-header-title">Upload Attendance Excel</span>
                           </div>
+                          <button
+                            type="button"
+                            className="btn-add-file-slot"
+                            onClick={() => document.getElementById(`slot-file-input-${slotIdx}`)?.click()}
+                          >
+                            + Add File
+                          </button>
                         </div>
 
-                        <div className="exact-file-inputs-list">
+                        <div className="exact-file-input-box">
                           <input
+                            id={`slot-file-input-${slotIdx}`}
                             type="file"
-                            multiple
                             accept=".xlsx, .xls, .csv"
-                            className="exact-native-file-input"
+                            className="exact-native-file-input-hidden"
                             onChange={(e) => handleFileInputChange(slotIdx, e.target.files)}
                           />
-                          {chosenFiles.length > 0 && (
-                            <div className="selected-files-indicator">
-                              {chosenFiles.map((f, fIdx) => (
-                                <span key={fIdx} className="file-chip-name">
-                                  📄 {f.name}
-                                </span>
-                              ))}
-                            </div>
-                          )}
+                          <button
+                            type="button"
+                            className="btn-choose-file-native"
+                            onClick={() => document.getElementById(`slot-file-input-${slotIdx}`)?.click()}
+                          >
+                            Choose file
+                          </button>
+                          <span className="chosen-file-display-name">
+                            {chosenFiles.length > 0 ? chosenFiles[0].name : 'No file chosen'}
+                          </span>
                         </div>
                       </div>
                     )}
@@ -543,8 +551,8 @@ export default function MultiEventBatch() {
                 </button>
               </div>
 
-              <div className="exact-events-found-banner mt-2">
-                <span className="green-check-icon">☑</span>
+              <div className="exact-events-found-banner-bottom">
+                <span className="green-check-icon">✅</span>
                 <span className="green-found-text">{matchingEvents.length} event(s) found in range.</span>
               </div>
             </div>
