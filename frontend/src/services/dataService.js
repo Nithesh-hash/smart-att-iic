@@ -212,6 +212,9 @@ export function getSchoolMappings() {
 
 export function saveSchoolMappings(mappings) {
   localStorage.setItem(SCHOOLS_KEY, JSON.stringify(mappings));
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_mappings_changed', { detail: mappings }));
+  }
 }
 
 /**

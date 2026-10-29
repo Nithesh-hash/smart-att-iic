@@ -44,7 +44,7 @@ export default function Header({
             onClick={() => setDropdownOpen(!dropdownOpen)}
           >
             <div className="user-circle-logo">
-              <img src="/vit-logo.png" alt="VIT Logo" className="vit-circle-img" />
+              <img src="/vit-emblem.webp" alt="VIT Emblem" className="vit-circle-img" />
             </div>
             <span className="user-profile-name">Attendance</span>
             <span className="dropdown-caret">▾</span>
@@ -54,7 +54,7 @@ export default function Header({
             <div className="user-dropdown-menu-pic3">
               <div className="profile-center-emblem">
                 <div className="user-circle-logo-large">
-                  <img src="/vit-logo.png" alt="VIT" className="vit-circle-img" />
+                  <img src="/vit-emblem.webp" alt="VIT Emblem" className="vit-circle-img" />
                 </div>
                 <h3 className="profile-dropdown-name">Attendance</h3>
                 <p className="profile-dropdown-sub">VIT-IST Admin</p>

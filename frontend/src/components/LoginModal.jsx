@@ -43,8 +43,8 @@ export default function LoginModal({ onLoginSuccess }) {
 
   return (
     <div className="login-page-screen">
-      {/* Top Branding Section */}
-      <div className="center-institutional-branding mb-6">
+      {/* Top Institutional Header Banner (Image 3) */}
+      <div className="login-header-banner">
         <div className="logos-row-center">
           <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
           <img src="/iic-logo.png" alt="IIC Logo" className="official-iic-logo" />
@@ -57,42 +57,44 @@ export default function LoginModal({ onLoginSuccess }) {
         </h1>
       </div>
 
-      {/* Login Card */}
-      <div className="exact-login-card">
-        <h2 className="login-card-title">Login</h2>
+      {/* Centered Login Card Body (Image 3) */}
+      <div className="login-card-body-wrapper">
+        <div className="exact-login-card">
+          <h2 className="login-card-title">Login</h2>
 
-        {error && (
-          <div className="login-error-text">
-            {error}
-          </div>
-        )}
+          {error && (
+            <div className="login-error-text">
+              {error}
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit} className="login-form-inner">
-          <div className="login-input-group">
-            <input
-              type="text"
-              className="exact-form-input"
-              placeholder="Username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              autoFocus
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="login-form-inner">
+            <div className="login-input-group">
+              <input
+                type="text"
+                className="exact-form-input"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoFocus
+              />
+            </div>
 
-          <div className="login-input-group">
-            <input
-              type="password"
-              className="exact-form-input"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-          </div>
+            <div className="login-input-group">
+              <input
+                type="password"
+                className="exact-form-input"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
 
-          <button type="submit" className="exact-btn-signin">
-            Sign In
-          </button>
-        </form>
+            <button type="submit" className="exact-btn-signin">
+              Sign In
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

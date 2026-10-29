@@ -27,7 +27,8 @@ import {
 import defaultSchoolsConfig from '../config/schools.json';
 import {
   processFilesForPreview,
-  generateSegregatedZipClient
+  generateSegregatedZipClient,
+  segregateAttendance
 } from '../services/attendanceProcessor';
 import { addSegregationHistory } from '../services/dataService';
 
@@ -114,6 +115,26 @@ export default function QuickSegregation() {
   const saveMappings = (updated) => {
     setMappings(updated);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('smart_att_mappings_changed', { detail: updated }));
+    }
+
+    // Immediately re-segregate live if raw files/events exist!
+    if (rawEvents && rawEvents.length > 0) {
+      try {
+        const segResult = segregateAttendance(rawEvents, updated);
+        setPreviewData(prev => prev ? ({
+          ...prev,
+          schoolsCount: segResult.schoolSummaryList.length,
+          totalStudentsProcessed: segResult.totalStudentsProcessed,
+          schoolSummary: segResult.schoolSummaryList,
+          warnings: segResult.warnings,
+          suggestedZipName: segResult.zipFilename
+        }) : null);
+      } catch (err) {
+        console.warn('Live re-segregation notice:', err);
+      }
+    }
   };
 
   const resetMappingsToDefault = async () => {

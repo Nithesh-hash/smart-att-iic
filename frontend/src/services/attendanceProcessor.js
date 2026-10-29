@@ -291,7 +291,16 @@ export function isValidRegNo(value) {
 }
 
 export function buildBranchToSchoolMap(customMappings = null) {
-  const mergedConfig = { ...defaultSchoolsConfig, ...(customMappings || {}) };
+  let storedMappings = null;
+  if (!customMappings) {
+    try {
+      const raw = localStorage.getItem('vit_attendance_custom_schools_mapping');
+      if (raw) storedMappings = JSON.parse(raw);
+    } catch {
+      // ignore
+    }
+  }
+  const mergedConfig = { ...defaultSchoolsConfig, ...(storedMappings || {}), ...(customMappings || {}) };
   const branchMap = new Map();
 
   for (const [school, branches] of Object.entries(mergedConfig)) {

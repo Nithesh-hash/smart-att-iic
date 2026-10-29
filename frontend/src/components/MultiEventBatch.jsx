@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import { getEvents, addSegregationHistory } from '../services/dataService';
+import { getEvents, addSegregationHistory, getSchoolMappings } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
 
 export default function MultiEventBatch() {
@@ -80,6 +80,10 @@ export default function MultiEventBatch() {
     });
 
     setMatchingEvents(filtered);
+    if (numberOfEvents && parseInt(numberOfEvents, 10) > filtered.length) {
+      setNumberOfEvents('');
+      setSlotData({});
+    }
   };
 
   const handleSelectNumberOfEvents = (val) => {
@@ -166,7 +170,8 @@ export default function MultiEventBatch() {
     setIsProcessing(true);
 
     try {
-      const result = await processMultiEventBatch(compiledSlots);
+      const currentMappings = getSchoolMappings();
+      const result = await processMultiEventBatch(compiledSlots, currentMappings);
       setSegregationResult(result);
 
       // Record in Segregation History
@@ -437,11 +442,15 @@ export default function MultiEventBatch() {
                   onChange={(e) => handleSelectNumberOfEvents(e.target.value)}
                 >
                   <option value="">-- Select --</option>
-                  <option value="1">1</option>
-                  <option value="2">2</option>
-                  <option value="3">3</option>
-                  <option value="4">4</option>
-                  <option value="5">5</option>
+                  {matchingEvents.length === 0 ? (
+                    <option value="" disabled>0 events found in range</option>
+                  ) : (
+                    Array.from({ length: matchingEvents.length }, (_, i) => i + 1).map(num => (
+                      <option key={num} value={String(num)}>
+                        {num}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
