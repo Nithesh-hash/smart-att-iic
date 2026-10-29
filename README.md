@@ -1,7 +1,6 @@
 # VIT SMART Attendance Segregator
 
 > **Office of Innovation, Startup & Technology Transfer (VIT-IST)**  
-> Intelligent multi-event attendance segregation and Excel generation web app built with **React (Vite)** and **Node.js (Express)** on **Firebase** (Hosting + 2nd Gen Cloud Functions).
 
 ---
 
