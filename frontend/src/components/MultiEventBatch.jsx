@@ -454,10 +454,12 @@ export default function MultiEventBatch() {
                 </select>
               </div>
 
-              <div className="exact-events-found-banner">
-                <span className="green-check-icon">☑</span>
-                <span className="green-found-text">{matchingEvents.length} event(s) found in range.</span>
-              </div>
+              {countNum === 0 && (
+                <div className="exact-events-found-banner">
+                  <span className="green-check-icon">✅</span>
+                  <span className="green-found-text">{matchingEvents.length} event(s) found in range.</span>
+                </div>
+              )}
             </div>
           )}
 
