@@ -1,0 +1,19 @@
+{
+  "SENSE": ["BVD", "BEC", "BML"],
+  "SCOPE": ["BBS", "BDS", "BCT", "BCB", "MIC", "BAI", "MID", "BCI", "BKT", "BCE"],
+  "SCORE": ["BIT", "BCA", "BCS", "MCA", "MAG", "BYB", "BDE", "MIS"],
+  "SAS": ["MDT", "MSP"],
+  "SELECT": ["BEE", "BEL", "BEI", "MAC"],
+  "SMEC": ["MMT", "BMV", "BST", "BMA", "BME", "BMM"],
+  "SBST": ["BBT", "MSI", "MFI"],
+  "SCE": ["BCL"],
+  "SHINE": ["BHT"],
+  "SCHEME": ["BCM"],
+  "VAIAL": ["BAG"],
+  "SSL": ["BFN", "BBC", "BCC", "BBP"],
+  "VITBS": ["BBA", "MBA"],
+  "HOT": ["BHA"],
+  "VSMART": ["BVC", "BAM"],
+  "V-SIGN": ["BID"],
+  "V-SPARC": ["BARC"]
+}

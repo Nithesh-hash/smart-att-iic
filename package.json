@@ -1,0 +1,27 @@
+{
+  "name": "attendance-segregator-root",
+  "version": "1.0.0",
+  "description": "Attendance Segregator - React + Express on Firebase (Hosting + Cloud Functions 2nd Gen)",
+  "scripts": {
+    "login": "firebase login",
+    "use": "firebase use --add",
+    "build": "npm run build --prefix frontend",
+    "start:backend": "node functions/index.js",
+    "start:frontend": "npm run dev --prefix frontend",
+    "deploy": "npm run build && firebase deploy --only hosting"
+  },
+  "keywords": [
+    "attendance",
+    "segregator",
+    "firebase",
+    "cloud-functions-2nd-gen",
+    "react",
+    "vite",
+    "exceljs"
+  ],
+  "author": "VIT-IST | Office of Innovation, Startup & Technology Transfer",
+  "license": "ISC",
+  "devDependencies": {
+    "firebase-tools": "^15.34.1"
+  }
+}
