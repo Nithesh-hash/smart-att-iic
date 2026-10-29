@@ -186,12 +186,15 @@ export default function MultiEventBatch() {
           ? `${firstCoord.coordinatorName} (${firstCoord.school}${firstCoord.phoneNumber ? ` | ${firstCoord.phoneNumber}` : ''})`
           : 'Faculty Admin';
 
+        const zipBlobUrl = result?.blob ? window.URL.createObjectURL(result.blob) : null;
+
         await addSegregationHistory({
           eventDates: compiledSlots.map(s => s.event.days?.[0]?.date).filter(Boolean).join(', ') || result.dateTag,
           eventsSegregated: eventsNamesList,
           coordinatorFormatted,
           count: compiledSlots.length,
           zipName: result.zipName,
+          downloadUrl: zipBlobUrl,
           totalStudents: result.totalStudents,
           schoolsRepresented: result.schoolsCount,
           filesCount: result.totalFiles,

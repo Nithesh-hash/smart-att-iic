@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useRef, useEffect } from 'react';
+import { Download } from 'lucide-react';
 
 export default function Header({
   currentUser,
@@ -83,7 +84,7 @@ export default function Header({
                   className="btn-install-webapp"
                   onClick={handleInstallPWA}
                 >
-                  <span className="pwa-btn-icon">📱</span>
+                  <Download size={15} className="pwa-btn-icon" />
                   <span>Install as WebApp</span>
                 </button>
               </div>

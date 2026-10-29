@@ -75,7 +75,11 @@ export default function SegregationHistory() {
     loadHistory();
     const handleHistoryChanged = () => loadHistory();
     window.addEventListener('smart_att_history_changed', handleHistoryChanged);
-    return () => window.removeEventListener('smart_att_history_changed', handleHistoryChanged);
+    window.addEventListener('storage', handleHistoryChanged);
+    return () => {
+      window.removeEventListener('smart_att_history_changed', handleHistoryChanged);
+      window.removeEventListener('storage', handleHistoryChanged);
+    };
   }, []);
 
   const handleClear = () => {
@@ -100,34 +104,78 @@ export default function SegregationHistory() {
       });
     }
 
-    // Date range filter
-    if (fromDate) {
-      const fromD = new Date(fromDate);
-      fromD.setHours(0, 0, 0, 0);
+    // Date range filter: checks eventDates, timestamp, and segregatedOn
+    if (fromDate || toDate) {
+      const fromD = fromDate ? new Date(fromDate) : null;
+      if (fromD) fromD.setHours(0, 0, 0, 0);
+
+      const toD = toDate ? new Date(toDate) : null;
+      if (toD) toD.setHours(23, 59, 59, 999);
+
       result = result.filter(item => {
-        const dStr = item.timestamp || item.eventDates || item.segregatedOn;
-        if (!dStr) return true;
-        const d = new Date(dStr);
-        return isNaN(d.getTime()) ? true : d >= fromD;
-      });
-    }
-    if (toDate) {
-      const toD = new Date(toDate);
-      toD.setHours(23, 59, 59, 999);
-      result = result.filter(item => {
-        const dStr = item.timestamp || item.eventDates || item.segregatedOn;
-        if (!dStr) return true;
-        const d = new Date(dStr);
-        return isNaN(d.getTime()) ? true : d <= toD;
+        const datesToCheck = [];
+
+        // 1. Check timestamp
+        if (item.timestamp) {
+          const t = new Date(item.timestamp);
+          if (!isNaN(t.getTime())) datesToCheck.push(t);
+        }
+
+        // 2. Check segregatedOn (DD-MM-YYYY HH:MM AM/PM)
+        if (item.segregatedOn) {
+          const parts = String(item.segregatedOn).trim().split(' ')[0].split('-');
+          if (parts.length === 3) {
+            const parsed = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+            if (!isNaN(parsed.getTime())) datesToCheck.push(parsed);
+          }
+        }
+
+        // 3. Check eventDates (e.g., "2026-07-16" or "16-07-2026, 17-07-2026")
+        if (item.eventDates) {
+          const rawTokens = String(item.eventDates).split(/[,|\s]+/);
+          rawTokens.forEach(tok => {
+            if (/^\d{2}-\d{2}-\d{4}$/.test(tok)) {
+              const [d, m, y] = tok.split('-');
+              const p = new Date(`${y}-${m}-${d}`);
+              if (!isNaN(p.getTime())) datesToCheck.push(p);
+            } else if (/^\d{4}-\d{2}-\d{2}$/.test(tok)) {
+              const p = new Date(tok);
+              if (!isNaN(p.getTime())) datesToCheck.push(p);
+            }
+          });
+        }
+
+        if (datesToCheck.length === 0) return true;
+
+        return datesToCheck.some(d => {
+          const afterFrom = !fromD || d >= fromD;
+          const beforeTo = !toD || d <= toD;
+          return afterFrom && beforeTo;
+        });
       });
     }
 
-    // Sorting
+    // Sorting (numeric timestamp comparison ensures reliable newest-first order)
     result.sort((a, b) => {
-      const timeA = a.timestamp || a.segregatedOn || '';
-      const timeB = b.timestamp || b.segregatedOn || '';
-      if (sortBy === 'newest') return timeB.localeCompare(timeA);
-      if (sortBy === 'oldest') return timeA.localeCompare(timeB);
+      const getMs = (item) => {
+        if (item.timestamp) {
+          const t = new Date(item.timestamp).getTime();
+          if (!isNaN(t)) return t;
+        }
+        if (item.segregatedOn) {
+          const parts = String(item.segregatedOn).trim().split(' ')[0].split('-');
+          if (parts.length === 3) {
+            const t = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`).getTime();
+            if (!isNaN(t)) return t;
+          }
+        }
+        return 0;
+      };
+
+      const timeA = getMs(a);
+      const timeB = getMs(b);
+      if (sortBy === 'newest') return timeB - timeA;
+      if (sortBy === 'oldest') return timeA - timeB;
       return 0;
     });
 

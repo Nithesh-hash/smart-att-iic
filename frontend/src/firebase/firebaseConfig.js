@@ -27,9 +27,9 @@ export function getSavedFirebaseConfig() {
     apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'smart-att-iic.firebaseapp.com',
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'smart-att-iic',
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'smart-att-iic.appspot.com',
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
-    appId: import.meta.env.VITE_FIREBASE_APP_ID || ''
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'smart-att-iic.firebasestorage.app',
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '229923231380',
+    appId: import.meta.env.VITE_FIREBASE_APP_ID || '1:229923231380:web:7ec14b9b66cd1aa2da4681'
   };
 }
 

@@ -1,15 +1,15 @@
 /**
  * Unified Data Persistence Layer
  * Hybrid Serverless Architecture:
- * - Direct Firestore integration when credentials exist
- * - Seamless LocalStorage fallback for offline / demo mode
- * - Pre-seeded institutional mock data for zero-config onboarding
+ * - Direct Firestore integration with resilient non-blocking background sync
+ * - Instant, synchronous LocalStorage operations so UI reflects immediately without latency
+ * - Pre-seeded institutional mock data matching portal design
  */
 
 import {
   collection,
   getDocs,
-  addDoc,
+  setDoc,
   deleteDoc,
   doc,
   writeBatch
@@ -61,13 +61,22 @@ export function isUsingFirebase() {
 }
 
 /**
- * --- EVENTS CRUD ---
+ * Helper: Run promise with a timeout so Firestore never hangs the UI
  */
-export async function getEvents() {
-  // Always load from local persistence first
+function withTimeout(promise, ms = 2500) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), ms))
+  ]);
+}
+
+/**
+ * --- EVENTS CRUD (Instant Local + Background Remote Sync) ---
+ */
+export function getEventsSync() {
   try {
     const raw = localStorage.getItem(EVENTS_KEY);
-    if (raw) {
+    if (raw !== null) {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed;
@@ -77,34 +86,73 @@ export async function getEvents() {
     console.error('LocalStorage events read error:', e);
   }
 
-  // Default seed matching screenshots
+  // Fallback initial seed
   const seeded = getInitialMockEvents();
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(seeded));
+  try {
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(seeded));
+  } catch (e) {}
   return seeded;
 }
 
+export async function getEvents() {
+  const localList = getEventsSync();
+
+  // Background non-blocking sync with Firestore
+  const db = getDb();
+  if (db) {
+    withTimeout(getDocs(collection(db, 'events')), 2500)
+      .then(snap => {
+        if (!snap.empty) {
+          const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const current = getEventsSync();
+          const existingIds = new Set(current.map(e => e.id));
+          const newFromRemote = remoteList.filter(e => !existingIds.has(e.id));
+          if (newFromRemote.length > 0) {
+            const merged = [...current, ...newFromRemote];
+            localStorage.setItem(EVENTS_KEY, JSON.stringify(merged));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: { merged: true } }));
+            }
+          }
+        }
+      })
+      .catch(err => {
+        // Silently skip if Firestore is unreachable or offline
+      });
+  }
+
+  return localList;
+}
+
 export async function addEvent(eventData) {
-  const current = await getEvents();
-  const id = `ev_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+  const current = getEventsSync();
+  const id = `ev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const saved = {
     id,
     ...eventData,
     createdAt: new Date().toISOString()
   };
 
-  const updated = [saved, ...current];
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
-
-  // Dispatch global event for instant UI reflection across tabs
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: saved }));
+  const updated = [saved, ...current.filter(e => e.id !== id)];
+  try {
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('LocalStorage write error:', e);
   }
 
-  // Background sync to Firestore if connected
+  // Dispatch global event for instant UI reflection across tabs & components
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: saved }));
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  }
+
+  // Background Firestore persistence (non-blocking)
   const db = getDb();
   if (db) {
-    addDoc(collection(db, 'events'), saved).catch(err => {
-      console.warn('Firestore background event sync error:', err);
+    setDoc(doc(db, 'events', id), saved).catch(err => {
+      console.warn('Firestore event write error:', err);
     });
   }
 
@@ -112,18 +160,25 @@ export async function addEvent(eventData) {
 }
 
 export async function deleteEvent(eventId) {
-  const current = await getEvents();
+  const current = getEventsSync();
   const updated = current.filter(e => e.id !== eventId);
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('LocalStorage write error:', e);
+  }
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: { deletedId: eventId } }));
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
   }
 
   const db = getDb();
   if (db) {
     deleteDoc(doc(db, 'events', eventId)).catch(err => {
-      console.warn('Firestore background delete error:', err);
+      console.warn('Firestore event delete error:', err);
     });
   }
 
@@ -131,12 +186,12 @@ export async function deleteEvent(eventId) {
 }
 
 /**
- * --- SEGREGATION HISTORY CRUD ---
+ * --- SEGREGATION HISTORY CRUD (Instant Local + Background Remote Sync) ---
  */
-export async function getSegregationHistory() {
+export function getSegregationHistorySync() {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
-    if (raw) {
+    if (raw !== null) {
       const list = JSON.parse(raw);
       if (Array.isArray(list) && list.length > 0) {
         return list.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
@@ -146,32 +201,86 @@ export async function getSegregationHistory() {
     console.error('LocalStorage history read error:', e);
   }
 
+  // Fallback initial seed matching screenshot
   const seeded = getInitialMockHistory();
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(seeded));
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(seeded));
+  } catch (e) {}
   return seeded;
 }
 
+export async function getSegregationHistory() {
+  const localList = getSegregationHistorySync();
+
+  // Background non-blocking sync with Firestore
+  const db = getDb();
+  if (db) {
+    withTimeout(getDocs(collection(db, 'segregation_history')), 2500)
+      .then(snap => {
+        if (!snap.empty) {
+          const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+          const current = getSegregationHistorySync();
+          const existingIds = new Set(current.map(h => h.id));
+          const newFromRemote = remoteList.filter(h => !existingIds.has(h.id));
+          if (newFromRemote.length > 0) {
+            const merged = [...current, ...newFromRemote];
+            merged.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
+            localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: { merged: true } }));
+            }
+          }
+        }
+      })
+      .catch(err => {
+        // Silently skip if Firestore is unreachable or offline
+      });
+  }
+
+  return localList;
+}
+
 export async function addSegregationHistory(historyRecord) {
-  const current = await getSegregationHistory();
-  const id = `hist_${Date.now()}`;
+  const current = getSegregationHistorySync();
+  const id = `hist_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const now = new Date();
+  const day = String(now.getDate()).padStart(2, '0');
+  const month = String(now.getMonth() + 1).padStart(2, '0');
+  const year = now.getFullYear();
+  let hours = now.getHours();
+  const minutes = String(now.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12 || 12;
+  const hoursStr = String(hours).padStart(2, '0');
+  const formattedSegregatedOn = `${day}-${month}-${year} ${hoursStr}:${minutes} ${ampm}`;
+
   const saved = {
     id,
     ...historyRecord,
-    timestamp: historyRecord.timestamp || new Date().toISOString()
+    segregatedOn: historyRecord.segregatedOn || formattedSegregatedOn,
+    timestamp: historyRecord.timestamp || now.toISOString()
   };
 
-  const updated = [saved, ...current];
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
-
-  // Dispatch global event for instant UI reflection across tabs
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: saved }));
+  const updated = [saved, ...current.filter(h => h.id !== id)];
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('LocalStorage write error:', e);
   }
 
+  // Dispatch global events for instant UI reflection across tabs & components
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: saved }));
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  }
+
+  // Background Firestore persistence (non-blocking)
   const db = getDb();
   if (db) {
-    addDoc(collection(db, 'segregation_history'), saved).catch(err => {
-      console.warn('Firestore background history sync error:', err);
+    setDoc(doc(db, 'segregation_history', id), saved).catch(err => {
+      console.warn('Firestore history write error:', err);
     });
   }
 
@@ -179,18 +288,25 @@ export async function addSegregationHistory(historyRecord) {
 }
 
 export async function deleteSegregationHistory(historyId) {
-  const current = await getSegregationHistory();
+  const current = getSegregationHistorySync();
   const updated = current.filter(h => h.id !== historyId);
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+  } catch (e) {
+    console.warn('LocalStorage write error:', e);
+  }
 
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: { deletedId: historyId } }));
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
   }
 
   const db = getDb();
   if (db) {
     deleteDoc(doc(db, 'segregation_history', historyId)).catch(err => {
-      console.warn('Firestore background history delete error:', err);
+      console.warn('Firestore history delete error:', err);
     });
   }
 
@@ -302,7 +418,7 @@ function getInitialMockEvents() {
     },
     {
       id: 'ev_3_summer_startup_2',
-      eventName: 'Summer StartUp Launch Pad',
+      eventName: 'Summer Startup Launch Pad',
       coordinatorName: 'Jothish Kumar M',
       coordinatorContact: '',
       school: 'SCORE',
@@ -365,4 +481,3 @@ function getInitialMockHistory() {
     }
   ];
 }
-

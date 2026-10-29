@@ -104,7 +104,7 @@ export default function FirebaseSettingsModal({ onClose, onConfigSaved }) {
             <input
               type="text"
               className="form-input"
-              placeholder="AIzaSy..."
+              placeholder="Enter Web API Key"
               value={config.apiKey || ''}
               onChange={(e) => handleFieldChange('apiKey', e.target.value)}
             />

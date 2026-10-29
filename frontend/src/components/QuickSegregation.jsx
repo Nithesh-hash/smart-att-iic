@@ -58,6 +58,12 @@ export default function QuickSegregation() {
   const [authError, setAuthError] = useState('');
   const [isAuthorized, setIsAuthorized] = useState(false);
 
+  // Modification & Deletion Security PIN Prompt State
+  const [isMutationModalOpen, setIsMutationModalOpen] = useState(false);
+  const [pendingMutation, setPendingMutation] = useState(null);
+  const [mutationPin, setMutationPin] = useState('');
+  const [mutationError, setMutationError] = useState('');
+
   const handleOpenSettings = () => {
     // Always prompt for the PIN code every time clicked
     setAuthPin('');
@@ -150,26 +156,82 @@ export default function QuickSegregation() {
     localStorage.removeItem(STORAGE_KEY);
   };
 
-  const handleAddBranch = (school) => {
-    if (!newBranchCode.trim()) return;
+  const requestAddBranch = (school) => {
+    if (!newBranchCode.trim() || !school) return;
     const code = newBranchCode.trim().toUpperCase();
     const existingBranches = mappings[school] || [];
     if (existingBranches.includes(code)) return;
 
-    const updated = {
-      ...mappings,
-      [school]: [...existingBranches, code]
-    };
-    saveMappings(updated);
-    setNewBranchCode('');
+    setPendingMutation({
+      type: 'ADD',
+      school,
+      code,
+      desc: `Add branch code "${code}" to school ${school}`
+    });
+    setMutationPin('');
+    setMutationError('');
+    setIsMutationModalOpen(true);
   };
 
-  const handleRemoveBranch = (school, codeToRemove) => {
-    const updated = {
-      ...mappings,
-      [school]: (mappings[school] || []).filter(c => c !== codeToRemove)
-    };
-    saveMappings(updated);
+  const requestRemoveBranch = (school, codeToRemove) => {
+    setPendingMutation({
+      type: 'REMOVE',
+      school,
+      code: codeToRemove,
+      desc: `Delete branch code "${codeToRemove}" from school ${school}`
+    });
+    setMutationPin('');
+    setMutationError('');
+    setIsMutationModalOpen(true);
+  };
+
+  const requestResetMappings = () => {
+    setPendingMutation({
+      type: 'RESET',
+      desc: 'Reset all branch mappings to institutional defaults'
+    });
+    setMutationPin('');
+    setMutationError('');
+    setIsMutationModalOpen(true);
+  };
+
+  const handleConfirmMutation = (e) => {
+    if (e) e.preventDefault();
+    const correctPin = import.meta.env.VITE_BRANCH_CONFIG_PASSWORD || '2525';
+    if (mutationPin.trim() !== correctPin.trim()) {
+      setMutationError('Incorrect Security PIN. Authorization Failed.');
+      return;
+    }
+
+    if (!pendingMutation) {
+      setIsMutationModalOpen(false);
+      return;
+    }
+
+    if (pendingMutation.type === 'ADD') {
+      const existingBranches = mappings[pendingMutation.school] || [];
+      if (!existingBranches.includes(pendingMutation.code)) {
+        const updated = {
+          ...mappings,
+          [pendingMutation.school]: [...existingBranches, pendingMutation.code]
+        };
+        saveMappings(updated);
+        setNewBranchCode('');
+      }
+    } else if (pendingMutation.type === 'REMOVE') {
+      const updated = {
+        ...mappings,
+        [pendingMutation.school]: (mappings[pendingMutation.school] || []).filter(c => c !== pendingMutation.code)
+      };
+      saveMappings(updated);
+    } else if (pendingMutation.type === 'RESET') {
+      resetMappingsToDefault();
+    }
+
+    setIsMutationModalOpen(false);
+    setPendingMutation(null);
+    setMutationPin('');
+    setMutationError('');
   };
 
   const handleDragOver = (e) => {
@@ -347,6 +409,8 @@ export default function QuickSegregation() {
           const eventsListFormatted = previewData?.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.date || 'Today'} (${e.startTime || '9:00 AM'} - ${e.endTime || '5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
           const eventDateVal = previewData?.events?.[0]?.date || previewData?.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
 
+          const zipBlobUrl = result?.blob ? window.URL.createObjectURL(result.blob) : null;
+
           await addSegregationHistory({
             eventDates: eventDateVal,
             eventsSegregated: eventsListFormatted,
@@ -358,6 +422,7 @@ export default function QuickSegregation() {
             schoolsRepresented: result.schoolsCount || 0,
             filesCount: files.length,
             zipName: result.filename,
+            downloadUrl: zipBlobUrl,
             timestamp: new Date().toISOString()
           });
         } catch (histErr) {
@@ -792,7 +857,7 @@ export default function QuickSegregation() {
               />
               <button
                 className="btn-modal-reset"
-                onClick={resetMappingsToDefault}
+                onClick={requestResetMappings}
                 title="Reset to default institutional configuration"
               >
                 <RefreshCw size={14} /> Reset Defaults
@@ -823,7 +888,7 @@ export default function QuickSegregation() {
                 className="btn-modal-add"
                 disabled={!newBranchCode.trim() || !targetSchool}
                 onClick={() => {
-                  handleAddBranch(targetSchool);
+                  requestAddBranch(targetSchool);
                 }}
               >
                 <Plus size={16} /> Add Code
@@ -852,7 +917,7 @@ export default function QuickSegregation() {
                           <button
                             type="button"
                             className="branch-tag-delete"
-                            onClick={() => handleRemoveBranch(school, code)}
+                            onClick={() => requestRemoveBranch(school, code)}
                             title={`Remove ${code} from ${school}`}
                           >
                             ×
@@ -869,6 +934,76 @@ export default function QuickSegregation() {
                 Done & Save Mappings
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Security PIN Authorization Modal for Any Add / Modify / Delete in Branch Mapping */}
+      {isMutationModalOpen && (
+        <div className="modal-backdrop" style={{ zIndex: 9999999 }}>
+          <div className="security-pin-modal-card animate-dev-slide-up">
+            <div className="security-pin-header">
+              <div className="security-pin-icon-wrap">
+                <Lock size={22} className="security-lock-icon" />
+              </div>
+              <div className="security-pin-title-block">
+                <h3 className="security-pin-title">Authorize Configuration Change</h3>
+                <p className="security-pin-desc">
+                  {pendingMutation?.desc || 'Enter authorization PIN to confirm this modification.'}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => {
+                  setIsMutationModalOpen(false);
+                  setPendingMutation(null);
+                }}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmMutation} className="security-pin-form">
+              <div className="security-input-group">
+                <label className="security-pin-label">Enter Security PIN (2525)</label>
+                <input
+                  type="password"
+                  autoFocus
+                  maxLength={10}
+                  placeholder="Enter PIN"
+                  className={`security-pin-input ${mutationError ? 'security-input-error' : ''}`}
+                  value={mutationPin}
+                  onChange={(e) => {
+                    setMutationPin(e.target.value);
+                    if (mutationError) setMutationError('');
+                  }}
+                />
+              </div>
+
+              {mutationError && (
+                <div className="security-pin-error-text">
+                  <AlertTriangle size={14} />
+                  <span>{mutationError}</span>
+                </div>
+              )}
+
+              <div className="security-modal-footer">
+                <button
+                  type="button"
+                  className="btn-security-cancel"
+                  onClick={() => {
+                    setIsMutationModalOpen(false);
+                    setPendingMutation(null);
+                  }}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-security-submit">
+                  Authorize & Apply
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
