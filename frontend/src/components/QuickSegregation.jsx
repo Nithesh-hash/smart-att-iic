@@ -20,7 +20,8 @@ import {
   Users,
   X,
   Plus,
-  FileCheck
+  FileCheck,
+  Lock
 } from 'lucide-react';
 
 import defaultSchoolsConfig from '../config/schools.json';
@@ -49,6 +50,36 @@ export default function QuickSegregation() {
   const [mappingSearch, setMappingSearch] = useState('');
   const [newBranchCode, setNewBranchCode] = useState('');
   const [targetSchool, setTargetSchool] = useState('');
+
+  // Branch Configuration Security PIN State (Password 2525)
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authPin, setAuthPin] = useState('');
+  const [authError, setAuthError] = useState('');
+  const [isAuthorized, setIsAuthorized] = useState(false);
+
+  const handleOpenSettings = () => {
+    if (isAuthorized) {
+      setIsModalOpen(true);
+    } else {
+      setAuthPin('');
+      setAuthError('');
+      setIsAuthModalOpen(true);
+    }
+  };
+
+  const handleVerifyPin = (e) => {
+    if (e) e.preventDefault();
+    const correctPin = import.meta.env.VITE_BRANCH_CONFIG_PASSWORD || '2525';
+    if (authPin.trim() === correctPin.trim()) {
+      setIsAuthorized(true);
+      setIsAuthModalOpen(false);
+      setAuthPin('');
+      setAuthError('');
+      setIsModalOpen(true);
+    } else {
+      setAuthError('Incorrect Security PIN. Access Denied.');
+    }
+  };
 
   const fileInputRef = useRef(null);
 
@@ -386,8 +417,8 @@ export default function QuickSegregation() {
         </div>
         <button
           className="btn-glass"
-          onClick={() => setIsModalOpen(true)}
-          title="Configure Branch Mappings"
+          onClick={handleOpenSettings}
+          title="Configure Branch Mappings (Protected by PIN)"
         >
           <Settings size={18} />
           <span>Branch Mappings</span>
@@ -639,6 +670,70 @@ export default function QuickSegregation() {
                 </div>
               ))}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Branch Settings Security PIN Modal (Password 2525) */}
+      {isAuthModalOpen && (
+        <div className="modal-backdrop">
+          <div className="security-pin-modal-card animate-dev-slide-up">
+            <div className="security-pin-header">
+              <div className="security-pin-icon-wrap">
+                <Lock size={22} className="security-lock-icon" />
+              </div>
+              <div className="security-pin-title-block">
+                <h3 className="security-pin-title">Security PIN Required</h3>
+                <p className="security-pin-desc">
+                  Enter authorization PIN to manage school and branch mappings.
+                </p>
+              </div>
+              <button
+                type="button"
+                className="modal-close-btn"
+                onClick={() => setIsAuthModalOpen(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleVerifyPin} className="security-pin-form">
+              <div className="security-input-group">
+                <label className="security-pin-label">Authorization PIN</label>
+                <input
+                  type="password"
+                  autoFocus
+                  maxLength={10}
+                  placeholder="Enter PIN"
+                  className={`security-pin-input ${authError ? 'security-input-error' : ''}`}
+                  value={authPin}
+                  onChange={(e) => {
+                    setAuthPin(e.target.value);
+                    if (authError) setAuthError('');
+                  }}
+                />
+              </div>
+
+              {authError && (
+                <div className="security-pin-error-text">
+                  <AlertTriangle size={14} />
+                  <span>{authError}</span>
+                </div>
+              )}
+
+              <div className="security-modal-footer">
+                <button
+                  type="button"
+                  className="btn-security-cancel"
+                  onClick={() => setIsAuthModalOpen(false)}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className="btn-security-submit">
+                  Verify & Unlock
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
