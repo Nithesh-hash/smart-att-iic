@@ -17,6 +17,10 @@ import {
 } from 'lucide-react';
 
 import defaultSchoolsConfig from './config/schools.json';
+import {
+  processFilesForPreview,
+  generateSegregatedZipClient
+} from './services/attendanceProcessor';
 
 const STORAGE_KEY = 'vit_attendance_custom_schools_mapping';
 
@@ -26,6 +30,7 @@ export default function App() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [previewData, setPreviewData] = useState(null);
+  const [rawEvents, setRawEvents] = useState([]);
   const [eventEdits, setEventEdits] = useState({});
   const [errorMessage, setErrorMessage] = useState(null);
   const [downloadSuccess, setDownloadSuccess] = useState(null);
@@ -51,10 +56,12 @@ export default function App() {
       }
     }
 
-    // Try fetching from backend API, fallback to defaultSchoolsConfig
+    // Try fetching from backend API if available, fallback to defaultSchoolsConfig
     fetch('/api/config/schools')
       .then(res => {
         if (!res.ok) throw new Error('API config not available');
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) throw new Error('Not JSON');
         return res.json();
       })
       .then(data => {
@@ -76,7 +83,8 @@ export default function App() {
   const resetMappingsToDefault = async () => {
     try {
       const res = await fetch('/api/config/schools');
-      if (res.ok) {
+      const contentType = res.headers.get('content-type') || '';
+      if (res.ok && contentType.includes('application/json')) {
         const data = await res.json();
         setMappings(data);
       } else {
@@ -166,6 +174,7 @@ export default function App() {
       analyzeFiles(updated);
     } else {
       setPreviewData(null);
+      setRawEvents([]);
       setEventEdits({});
     }
   };
@@ -173,13 +182,14 @@ export default function App() {
   const clearAllFiles = () => {
     setFiles([]);
     setPreviewData(null);
+    setRawEvents([]);
     setEventEdits({});
     setErrorMessage(null);
     setDownloadSuccess(null);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
-  // Analyze files: Backend original segregation API
+  // Analyze files: In-Browser processing engine with backend fallback
   const analyzeFiles = async (filesToAnalyze) => {
     if (!filesToAnalyze || filesToAnalyze.length === 0) return;
 
@@ -187,38 +197,13 @@ export default function App() {
     setErrorMessage(null);
 
     try {
-      const formData = new FormData();
-      filesToAnalyze.forEach(f => formData.append('files', f));
-
-      if (Object.keys(mappings).length > 0) {
-        formData.append('customMappings', JSON.stringify(mappings));
-      }
-
-      const res = await fetch('/api/preview', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!res.ok) {
-        let errText = 'Failed to analyze files.';
-        try {
-          const errJson = await res.json();
-          if (errJson.error) errText = errJson.error;
-        } catch {
-          errText = `Server responded with status ${res.status}: ${res.statusText}`;
-        }
-        throw new Error(errText);
-      }
-
-      const data = await res.json();
-      if (!data || !data.events) {
-        throw new Error('Invalid preview response received from server.');
-      }
-
-      setPreviewData(data);
+      // 1. Primary: Run directly in browser memory (instant, Spark-compatible, 100% private)
+      const { rawEvents: parsedRaw, previewData: clientData } = await processFilesForPreview(filesToAnalyze, mappings);
+      setRawEvents(parsedRaw);
+      setPreviewData(clientData);
 
       const initialEdits = {};
-      data.events.forEach(ev => {
+      clientData.events.forEach(ev => {
         initialEdits[ev.id] = {
           eventName: ev.eventName || '',
           eventDate: ev.eventDate || '',
@@ -226,10 +211,58 @@ export default function App() {
         };
       });
       setEventEdits(initialEdits);
-    } catch (err) {
-      console.error('Preview analysis failed:', err);
-      setErrorMessage(err.message || 'Failed to analyze attendance files. Please ensure the backend server is running.');
-      setPreviewData(null);
+    } catch (clientErr) {
+      console.warn('In-browser analysis error, attempting API fallback:', clientErr);
+      try {
+        const formData = new FormData();
+        filesToAnalyze.forEach(f => formData.append('files', f));
+
+        if (Object.keys(mappings).length > 0) {
+          formData.append('customMappings', JSON.stringify(mappings));
+        }
+
+        const res = await fetch('/api/preview', {
+          method: 'POST',
+          body: formData
+        });
+
+        const contentType = res.headers.get('content-type') || '';
+        if (!contentType.includes('application/json')) {
+          throw new Error(clientErr.message || 'Failed to parse attendance files.');
+        }
+
+        if (!res.ok) {
+          let errText = 'Failed to analyze files.';
+          try {
+            const errJson = await res.json();
+            if (errJson.error) errText = errJson.error;
+          } catch {
+            errText = `Server responded with status ${res.status}: ${res.statusText}`;
+          }
+          throw new Error(errText);
+        }
+
+        const data = await res.json();
+        if (!data || !data.events) {
+          throw new Error('Invalid preview response received from server.');
+        }
+
+        setPreviewData(data);
+
+        const initialEdits = {};
+        data.events.forEach(ev => {
+          initialEdits[ev.id] = {
+            eventName: ev.eventName || '',
+            eventDate: ev.eventDate || '',
+            eventTime: ev.eventTime || ''
+          };
+        });
+        setEventEdits(initialEdits);
+      } catch (err) {
+        console.error('Preview analysis failed:', err);
+        setErrorMessage(err.message || 'Failed to analyze attendance files.');
+        setPreviewData(null);
+      }
     } finally {
       setIsAnalyzing(false);
     }
@@ -246,7 +279,7 @@ export default function App() {
     }));
   };
 
-  // Trigger Download: Backend original segregation API
+  // Trigger Download: Generates ZIP in-browser (or falls back to backend)
   const handleDownloadZip = async () => {
     if (!files || files.length === 0) return;
 
@@ -254,6 +287,20 @@ export default function App() {
     setErrorMessage(null);
 
     try {
+      // 1. Primary: In-browser ZIP generation
+      if (rawEvents && rawEvents.length > 0) {
+        const result = await generateSegregatedZipClient(rawEvents, eventEdits, mappings);
+        triggerDownload(result.blob, result.filename);
+
+        setDownloadSuccess({
+          filename: result.filename,
+          schoolsCount: result.schoolsCount,
+          totalStudents: result.totalStudents
+        });
+        return;
+      }
+
+      // 2. Fallback to API if rawEvents not cached
       const formData = new FormData();
       files.forEach(f => formData.append('files', f));
       formData.append('eventOverrides', JSON.stringify(eventEdits));
@@ -266,6 +313,11 @@ export default function App() {
         method: 'POST',
         body: formData
       });
+
+      const contentType = response.headers.get('content-type') || '';
+      if (contentType.includes('text/html')) {
+        throw new Error('Cloud Functions are not enabled. Re-upload your files to use instant in-browser generation.');
+      }
 
       if (!response.ok) {
         let errText = 'Failed to generate ZIP archive.';
