@@ -367,23 +367,24 @@ export async function addSegregationHistory(historyRecord) {
     console.warn('LocalStorage write error:', e);
   }
 
-  // Dispatch global events for instant UI reflection across tabs & components
-  if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: itemToStoreLocally }));
-    try {
-      window.dispatchEvent(new Event('storage'));
-    } catch (e) {}
-  }
-
   // Direct Firestore persistence
   const db = getDb();
   if (db) {
     try {
       const sanitized = sanitizeForFirestore(saved);
       await setDoc(doc(db, 'segregation_history', id), sanitized);
+      console.log('✅ Segregation History written to Firestore:', id);
     } catch (err) {
-      console.warn('Firestore history write error:', err);
+      console.error('❌ Firestore history write error:', err);
     }
+  }
+
+  // Dispatch global events for instant UI reflection across tabs & components
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: itemToStoreLocally }));
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
   }
 
   return itemToStoreLocally;

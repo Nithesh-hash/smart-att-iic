@@ -45,6 +45,17 @@ export default function App() {
   // Active Navigation Tab
   const [activeTab, setActiveTab] = useState(TABS.REGISTRATION);
 
+  // Global Navigation Event Listener
+  useEffect(() => {
+    const handleNav = (e) => {
+      if (e.detail && Object.values(TABS).includes(e.detail)) {
+        setActiveTab(e.detail);
+      }
+    };
+    window.addEventListener('smart_att_navigate', handleNav);
+    return () => window.removeEventListener('smart_att_navigate', handleNav);
+  }, []);
+
   // Aux Modals
   const [isRulesOpen, setIsRulesOpen] = useState(false);
   const [isCloudSettingsOpen, setIsCloudSettingsOpen] = useState(false);

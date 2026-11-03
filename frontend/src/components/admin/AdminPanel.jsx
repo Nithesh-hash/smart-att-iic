@@ -7,7 +7,7 @@
  * - Dynamic view for Events, Segregation History, and Analytics
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import EventsManagement from './EventsManagement';
 import SegregationHistory from './SegregationHistory';
 import AnalyticsDashboard from './AnalyticsDashboard';
@@ -20,6 +20,16 @@ const ADMIN_SUBTABS = {
 
 export default function AdminPanel() {
   const [activeSubTab, setActiveSubTab] = useState(ADMIN_SUBTABS.EVENTS);
+
+  useEffect(() => {
+    const handleSubTab = (e) => {
+      if (e.detail && Object.values(ADMIN_SUBTABS).includes(e.detail)) {
+        setActiveSubTab(e.detail);
+      }
+    };
+    window.addEventListener('smart_att_admin_subtab', handleSubTab);
+    return () => window.removeEventListener('smart_att_admin_subtab', handleSubTab);
+  }, []);
 
   return (
     <div className="exact-form-outer-card exact-admin-outer-card">

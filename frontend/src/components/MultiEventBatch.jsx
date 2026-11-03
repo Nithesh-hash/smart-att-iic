@@ -160,8 +160,11 @@ export default function MultiEventBatch() {
         return;
       }
 
-      const ev = allRegisteredEvents.find(e => e.id === slot.eventId);
-      if (!ev) continue;
+      const ev = allRegisteredEvents.find(e => e.id === slot.eventId) || matchingEvents.find(e => e.id === slot.eventId);
+      if (!ev) {
+        setErrorMessage(`Please select an event for Event ${i}.`);
+        return;
+      }
 
       const files = slot.files || [];
       if (files.length === 0) {
@@ -184,14 +187,18 @@ export default function MultiEventBatch() {
       });
     }
 
+    if (compiledSlots.length === 0) {
+      setErrorMessage('Please select an event and upload an attendance Excel file.');
+      return;
+    }
+
     setIsProcessing(true);
 
     try {
       const currentMappings = getSchoolMappings();
       const result = await processMultiEventBatch(compiledSlots, currentMappings);
-      setSegregationResult(result);
 
-      // Record in Segregation History
+      // 1. Record in Segregation History FIRST before setting result
       try {
         const eventsNamesList = compiledSlots.map(s => {
           const firstDay = s.event?.days?.[0] || {};
@@ -217,9 +224,13 @@ export default function MultiEventBatch() {
           filesCount: Number(result.totalFiles) || 1,
           timestamp: new Date().toISOString()
         });
+        console.log('✅ Segregation audit record successfully saved to history!');
       } catch (histErr) {
         console.error('Failed to record segregation history:', histErr);
       }
+
+      // 2. Set result to display Results View
+      setSegregationResult(result);
     } catch (err) {
       console.error('Segregation error:', err);
       setErrorMessage(err.message || 'Segregation failed. Please verify spreadsheet columns.');
@@ -346,6 +357,22 @@ export default function MultiEventBatch() {
           <div className="exact-results-header">
             <span className="green-box-check">✅</span>
             <h3 className="results-heading-green">Segregation Completed Successfully</h3>
+          </div>
+
+          {/* Direct Link to Segregation History */}
+          <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', color: '#166534', padding: '12px 16px', borderRadius: '8px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <span style={{ fontSize: '13px', fontWeight: '500' }}>✅ Audit record saved to <strong>Segregation History</strong> in Admin Panel.</span>
+            <button
+              type="button"
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('smart_att_navigate', { detail: 'admin' }));
+                window.dispatchEvent(new CustomEvent('smart_att_admin_subtab', { detail: 'history' }));
+              }}
+              style={{ background: '#190059', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              <span>👉</span>
+              <span>View in Segregation History</span>
+            </button>
           </div>
 
           {/* Segregation Summary Report Banner */}
@@ -561,6 +588,12 @@ export default function MultiEventBatch() {
               })}
 
               {/* Bottom Segregate All Events Button */}
+              {errorMessage && (
+                <div className="exact-alert-box exact-alert-error" style={{ marginBottom: '14px' }}>
+                  {errorMessage}
+                </div>
+              )}
+
               <div className="exact-segregate-btn-wrapper">
                 <button
                   type="button"

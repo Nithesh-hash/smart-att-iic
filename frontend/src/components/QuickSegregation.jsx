@@ -477,6 +477,30 @@ export default function QuickSegregation() {
         schoolsCount: previewData?.schoolSummary?.length || 0,
         totalStudents: previewData?.totalStudentsProcessed || 0
       });
+
+      // Audit Trail for backend segregation run
+      try {
+        const eventsListFormatted = previewData?.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.date || 'Today'} (${e.startTime || '9:00 AM'} - ${e.endTime || '5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
+        const eventDateVal = previewData?.events?.[0]?.date || previewData?.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
+        const zipBlobUrl = blob ? window.URL.createObjectURL(blob) : null;
+
+        await addSegregationHistory({
+          eventDates: eventDateVal,
+          eventsSegregated: eventsListFormatted,
+          coordinatorFormatted: 'Faculty Admin (VIT-IST)',
+          count: previewData?.events?.length || 1,
+          dateRange: `${previewData?.dateRange?.firstDateStr || 'N/A'} - ${previewData?.dateRange?.lastDateStr || 'N/A'}`,
+          eventsProcessed: previewData?.events?.length || 1,
+          totalStudents: previewData?.totalStudentsProcessed || 0,
+          schoolsRepresented: previewData?.schoolSummary?.length || 0,
+          filesCount: files.length,
+          zipName: filename || 'all_schools.zip',
+          downloadUrl: zipBlobUrl,
+          timestamp: new Date().toISOString()
+        });
+      } catch (histErr) {
+        console.warn('Could not record backend segregation run in history:', histErr);
+      }
     } catch (err) {
       console.error('Download error:', err);
       setErrorMessage(err.message || 'Could not download ZIP archive.');
