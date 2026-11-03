@@ -1,9 +1,9 @@
 /**
  * Unified Data Persistence Layer
- * Hybrid Serverless Architecture:
- * - Direct Firestore integration with resilient non-blocking background sync
- * - Instant, synchronous LocalStorage operations so UI reflects immediately without latency
- * - Pre-seeded institutional mock data matching portal design
+ * Powered directly by Google Cloud Firestore:
+ * - Primary cloud storage in Firestore collections ('events', 'segregation_history', 'config')
+ * - Instant synchronous local cache for zero-latency UI updates
+ * - Clean production state: No mock/demo records. All records come directly from user registrations and segregations.
  */
 
 import {
@@ -11,8 +11,7 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
-  doc,
-  writeBatch
+  doc
 } from 'firebase/firestore';
 import { getDb } from '../firebase/firebaseConfig';
 import defaultSchoolsConfig from '../config/schools.json';
@@ -61,9 +60,40 @@ export function isUsingFirebase() {
 }
 
 /**
+ * Identify legacy demo events to permanently filter and purge them
+ */
+export function isDemoEvent(ev) {
+  if (!ev) return false;
+  const id = String(ev.id || '');
+  const name = String(ev.eventName || '').trim().toLowerCase();
+  const coord = String(ev.coordinatorName || '').trim().toLowerCase();
+  const school = String(ev.school || '').trim().toLowerCase();
+
+  if (id.startsWith('ev_1_') || id.startsWith('ev_2_') || id.startsWith('ev_3_') || id.startsWith('ev_4_')) return true;
+  if (name === 'demo' || name === 'gyhby' || name === 'iic student council meeting' || name === 'summer startup launch pad') return true;
+  if (coord === 'ybyg' || school === 'ybyv') return true;
+  return false;
+}
+
+/**
+ * Identify legacy demo segregation history to permanently filter and purge them
+ */
+export function isDemoHistory(h) {
+  if (!h) return false;
+  const id = String(h.id || '');
+  const eventsText = String(h.eventsSegregated || '').toLowerCase();
+  const coord = String(h.coordinatorFormatted || '').toLowerCase();
+  const zip = String(h.zipName || '').toLowerCase();
+
+  if (id === 'hist_1' || id.startsWith('hist_1_')) return true;
+  if (eventsText.includes('gyhby') || coord.includes('ybyg') || coord.includes('ybyv') || zip.includes('all_schools_2026-07-01_120228.zip')) return true;
+  return false;
+}
+
+/**
  * Helper: Run promise with a timeout so Firestore never hangs the UI
  */
-function withTimeout(promise, ms = 2500) {
+function withTimeout(promise, ms = 4000) {
   return Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), ms))
@@ -71,61 +101,62 @@ function withTimeout(promise, ms = 2500) {
 }
 
 /**
- * --- EVENTS CRUD (Instant Local + Background Remote Sync) ---
+ * --- EVENTS CRUD (Direct Firestore + Instant Local Cache) ---
  */
 export function getEventsSync() {
   try {
     const raw = localStorage.getItem(EVENTS_KEY);
     if (raw !== null) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        return parsed;
+      if (Array.isArray(parsed)) {
+        const cleaned = parsed.filter(e => !isDemoEvent(e));
+        if (cleaned.length !== parsed.length) {
+          localStorage.setItem(EVENTS_KEY, JSON.stringify(cleaned));
+        }
+        return cleaned;
       }
     }
   } catch (e) {
     console.error('LocalStorage events read error:', e);
   }
 
-  // Fallback initial seed
-  const seeded = getInitialMockEvents();
-  try {
-    localStorage.setItem(EVENTS_KEY, JSON.stringify(seeded));
-  } catch (e) {}
-  return seeded;
+  return [];
 }
 
 export async function getEvents() {
   const localList = getEventsSync();
 
-  // Background non-blocking sync with Firestore
   const db = getDb();
   if (db) {
-    withTimeout(getDocs(collection(db, 'events')), 2500)
-      .then(snap => {
-        if (!snap.empty) {
-          const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const current = getEventsSync();
-          const existingIds = new Set(current.map(e => e.id));
-          const newFromRemote = remoteList.filter(e => !existingIds.has(e.id));
-          if (newFromRemote.length > 0) {
-            const merged = [...current, ...newFromRemote];
-            localStorage.setItem(EVENTS_KEY, JSON.stringify(merged));
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('smart_att_events_changed', { detail: { merged: true } }));
-            }
+    try {
+      const snap = await withTimeout(getDocs(collection(db, 'events')), 4000);
+      if (!snap.empty) {
+        const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Purge any old demo records found in Firestore
+        remoteList.forEach(item => {
+          if (isDemoEvent(item)) {
+            deleteDoc(doc(db, 'events', item.id)).catch(() => {});
           }
-        }
-      })
-      .catch(err => {
-        // Silently skip if Firestore is unreachable or offline
-      });
+        });
+
+        const cleanRemote = remoteList.filter(e => !isDemoEvent(e));
+        cleanRemote.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        localStorage.setItem(EVENTS_KEY, JSON.stringify(cleanRemote));
+        return cleanRemote;
+      } else {
+        return localList;
+      }
+    } catch (err) {
+      console.warn('Firestore getEvents failed, fallback to LocalStorage:', err);
+      return localList;
+    }
   }
 
   return localList;
 }
 
 export async function addEvent(eventData) {
-  const current = getEventsSync();
   const id = `ev_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const saved = {
     id,
@@ -133,7 +164,8 @@ export async function addEvent(eventData) {
     createdAt: new Date().toISOString()
   };
 
-  const updated = [saved, ...current.filter(e => e.id !== id)];
+  const current = getEventsSync();
+  const updated = [saved, ...current.filter(e => e.id !== id && !isDemoEvent(e))];
   try {
     localStorage.setItem(EVENTS_KEY, JSON.stringify(updated));
   } catch (e) {
@@ -148,12 +180,14 @@ export async function addEvent(eventData) {
     } catch (e) {}
   }
 
-  // Background Firestore persistence (non-blocking)
+  // Direct Firestore persistence
   const db = getDb();
   if (db) {
-    setDoc(doc(db, 'events', id), saved).catch(err => {
+    try {
+      await setDoc(doc(db, 'events', id), saved);
+    } catch (err) {
       console.warn('Firestore event write error:', err);
-    });
+    }
   }
 
   return saved;
@@ -177,71 +211,74 @@ export async function deleteEvent(eventId) {
 
   const db = getDb();
   if (db) {
-    deleteDoc(doc(db, 'events', eventId)).catch(err => {
+    try {
+      await deleteDoc(doc(db, 'events', eventId));
+    } catch (err) {
       console.warn('Firestore event delete error:', err);
-    });
+    }
   }
 
   return true;
 }
 
 /**
- * --- SEGREGATION HISTORY CRUD (Instant Local + Background Remote Sync) ---
+ * --- SEGREGATION HISTORY CRUD (Direct Firestore + Instant Local Cache) ---
  */
 export function getSegregationHistorySync() {
   try {
     const raw = localStorage.getItem(HISTORY_KEY);
     if (raw !== null) {
       const list = JSON.parse(raw);
-      if (Array.isArray(list) && list.length > 0) {
-        return list.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
+      if (Array.isArray(list)) {
+        const cleaned = list.filter(h => !isDemoHistory(h));
+        if (cleaned.length !== list.length) {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(cleaned));
+        }
+        return cleaned.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
       }
     }
   } catch (e) {
     console.error('LocalStorage history read error:', e);
   }
 
-  // Fallback initial seed matching screenshot
-  const seeded = getInitialMockHistory();
-  try {
-    localStorage.setItem(HISTORY_KEY, JSON.stringify(seeded));
-  } catch (e) {}
-  return seeded;
+  return [];
 }
 
 export async function getSegregationHistory() {
   const localList = getSegregationHistorySync();
 
-  // Background non-blocking sync with Firestore
   const db = getDb();
   if (db) {
-    withTimeout(getDocs(collection(db, 'segregation_history')), 2500)
-      .then(snap => {
-        if (!snap.empty) {
-          const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-          const current = getSegregationHistorySync();
-          const existingIds = new Set(current.map(h => h.id));
-          const newFromRemote = remoteList.filter(h => !existingIds.has(h.id));
-          if (newFromRemote.length > 0) {
-            const merged = [...current, ...newFromRemote];
-            merged.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
-            localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
-            if (typeof window !== 'undefined') {
-              window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: { merged: true } }));
-            }
+    try {
+      const snap = await withTimeout(getDocs(collection(db, 'segregation_history')), 4000);
+      if (!snap.empty) {
+        const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+        // Purge any old demo records found in Firestore
+        remoteList.forEach(item => {
+          if (isDemoHistory(item)) {
+            deleteDoc(doc(db, 'segregation_history', item.id)).catch(() => {});
           }
-        }
-      })
-      .catch(err => {
-        // Silently skip if Firestore is unreachable or offline
-      });
+        });
+
+        const cleanRemote = remoteList
+          .filter(h => !isDemoHistory(h))
+          .sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(cleanRemote));
+        return cleanRemote;
+      } else {
+        return localList;
+      }
+    } catch (err) {
+      console.warn('Firestore getSegregationHistory failed, fallback to LocalStorage:', err);
+      return localList;
+    }
   }
 
   return localList;
 }
 
 export async function addSegregationHistory(historyRecord) {
-  const current = getSegregationHistorySync();
   const id = `hist_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date();
   const day = String(now.getDate()).padStart(2, '0');
@@ -254,14 +291,21 @@ export async function addSegregationHistory(historyRecord) {
   const hoursStr = String(hours).padStart(2, '0');
   const formattedSegregatedOn = `${day}-${month}-${year} ${hoursStr}:${minutes} ${ampm}`;
 
+  // Strip non-serializable properties (blob) before writing to Firestore
+  const { blob, downloadUrl, ...firestoreData } = historyRecord;
+
   const saved = {
     id,
-    ...historyRecord,
+    ...firestoreData,
     segregatedOn: historyRecord.segregatedOn || formattedSegregatedOn,
     timestamp: historyRecord.timestamp || now.toISOString()
   };
 
-  const updated = [saved, ...current.filter(h => h.id !== id)];
+  const current = getSegregationHistorySync();
+  const updated = [
+    { ...saved, downloadUrl },
+    ...current.filter(h => h.id !== id && !isDemoHistory(h))
+  ];
   try {
     localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
   } catch (e) {
@@ -276,12 +320,14 @@ export async function addSegregationHistory(historyRecord) {
     } catch (e) {}
   }
 
-  // Background Firestore persistence (non-blocking)
+  // Direct Firestore persistence
   const db = getDb();
   if (db) {
-    setDoc(doc(db, 'segregation_history', id), saved).catch(err => {
+    try {
+      await setDoc(doc(db, 'segregation_history', id), saved);
+    } catch (err) {
       console.warn('Firestore history write error:', err);
-    });
+    }
   }
 
   return saved;
@@ -305,9 +351,11 @@ export async function deleteSegregationHistory(historyId) {
 
   const db = getDb();
   if (db) {
-    deleteDoc(doc(db, 'segregation_history', historyId)).catch(err => {
+    try {
+      await deleteDoc(doc(db, 'segregation_history', historyId));
+    } catch (err) {
       console.warn('Firestore history delete error:', err);
-    });
+    }
   }
 
   return true;
@@ -331,153 +379,26 @@ export function saveSchoolMappings(mappings) {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('smart_att_mappings_changed', { detail: mappings }));
   }
-}
-
-/**
- * --- SEED DATABASE ---
- * Populates Firestore or LocalStorage with rich sample data
- */
-export async function seedInitialData() {
-  const mockEvents = getInitialMockEvents();
-  const mockHistory = getInitialMockHistory();
 
   const db = getDb();
   if (db) {
     try {
-      const batch = writeBatch(db);
-      mockEvents.forEach(ev => {
-        const ref = doc(collection(db, 'events'));
-        batch.set(ref, ev);
-      });
-      mockHistory.forEach(h => {
-        const ref = doc(collection(db, 'segregation_history'));
-        batch.set(ref, h);
-      });
-      await batch.commit();
-    } catch (err) {
-      console.warn('Firestore batch seed failed, writing to LocalStorage instead:', err);
-    }
+      setDoc(doc(db, 'config', 'schools_mapping'), { mappings, updatedAt: new Date().toISOString() }).catch(() => {});
+    } catch (e) {}
   }
-
-  localStorage.setItem(EVENTS_KEY, JSON.stringify(mockEvents));
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(mockHistory));
-  localStorage.setItem(SCHOOLS_KEY, JSON.stringify(defaultSchoolsConfig));
-
-  return true;
 }
 
 /**
- * Initial Institutional Mock Data matching exact screenshots (Image 9 & 10)
+ * Clean seeder (no mock data)
  */
-function getInitialMockEvents() {
-  return [
-    {
-      id: 'ev_1_iic_council',
-      eventName: 'IIC Student Council Meeting',
-      coordinatorName: 'Dr.Jothish Kumar',
-      coordinatorContact: '9787074353',
-      school: 'VITISR',
-      eventType: 'Mentoring Session',
-      isMultiDay: false,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-07-16',
-          venue: 'PRP- A BLOCK 156',
-          startTime: '5:00 PM',
-          endTime: '7:00 PM'
-        }
-      ],
-      createdAt: '2026-07-16T17:00:00.000Z'
-    },
-    {
-      id: 'ev_2_summer_startup_1',
-      eventName: 'Summer Startup Launch Pad',
-      coordinatorName: 'Jothish Kumar M',
-      coordinatorContact: '',
-      school: 'SCORE',
-      eventType: 'Mentoring Session',
-      isMultiDay: true,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-07-09',
-          venue: 'PRP A block Room no. 156',
-          startTime: '9:30 AM',
-          endTime: '1:00 PM'
-        },
-        {
-          dayIndex: 2,
-          date: '2026-07-10',
-          venue: 'PRP A block Room no. 156',
-          startTime: '9:30 AM',
-          endTime: '1:00 PM'
-        }
-      ],
-      createdAt: '2026-07-09T09:30:00.000Z'
-    },
-    {
-      id: 'ev_3_summer_startup_2',
-      eventName: 'Summer Startup Launch Pad',
-      coordinatorName: 'Jothish Kumar M',
-      coordinatorContact: '',
-      school: 'SCORE',
-      eventType: 'Mentoring Session',
-      isMultiDay: true,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-07-09',
-          venue: 'PRP A block Room no. 156',
-          startTime: '2:00 PM',
-          endTime: '5:30 PM'
-        },
-        {
-          dayIndex: 2,
-          date: '2026-07-10',
-          venue: 'PRP A block Room no. 156',
-          startTime: '2:00 PM',
-          endTime: '5:30 PM'
-        }
-      ],
-      createdAt: '2026-07-09T14:00:00.000Z'
-    },
-    {
-      id: 'ev_4_gyhby',
-      eventName: 'Gyhby',
-      coordinatorName: 'Ybyg',
-      coordinatorContact: '',
-      school: 'Ybyv',
-      eventType: 'Workshop',
-      isMultiDay: false,
-      days: [
-        {
-          dayIndex: 1,
-          date: '2026-07-01',
-          venue: 'Thtyg',
-          startTime: '1:00 AM',
-          endTime: '1:00 PM'
-        }
-      ],
-      createdAt: '2026-07-01T01:00:00.000Z'
-    }
-  ];
+export async function seedInitialData() {
+  return true;
 }
 
-function getInitialMockHistory() {
-  return [
-    {
-      id: 'hist_1',
-      eventDates: '01-07-2026',
-      eventsSegregated: '• Gyhby | Thtyg | 2026-07-01 (1:00 AM - 1:00 PM)',
-      coordinatorFormatted: 'Ybyg (Ybyv)',
-      count: 1,
-      segregatedOn: '12-10-2026 12:02 PM',
-      zipName: 'all_schools_2026-07-01_120228.zip',
-      timestamp: '2026-10-12T12:02:28.000Z',
-      totalStudents: 1,
-      schoolsRepresented: 1,
-      filesCount: 1
-    }
-  ];
+// Self-executing cleanup of legacy demo items on initialization
+if (typeof window !== 'undefined') {
+  try {
+    getEventsSync();
+    getSegregationHistorySync();
+  } catch (e) {}
 }

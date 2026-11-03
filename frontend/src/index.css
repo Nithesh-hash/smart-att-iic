@@ -80,6 +80,10 @@ body {
   font-size: 14px;
   font-weight: 500;
   color: #111827;
+  max-width: 175px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .dropdown-caret {
@@ -1973,10 +1977,12 @@ body {
 }
 
 .profile-dropdown-name {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 700;
   color: #0f172a;
   margin: 0;
+  word-break: break-word;
+  max-width: 220px;
 }
 
 .profile-dropdown-sub {

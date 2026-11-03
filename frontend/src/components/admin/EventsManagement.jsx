@@ -56,7 +56,11 @@ export default function EventsManagement() {
     loadEvents();
     const handleEventsChanged = () => loadEvents();
     window.addEventListener('smart_att_events_changed', handleEventsChanged);
-    return () => window.removeEventListener('smart_att_events_changed', handleEventsChanged);
+    window.addEventListener('storage', handleEventsChanged);
+    return () => {
+      window.removeEventListener('smart_att_events_changed', handleEventsChanged);
+      window.removeEventListener('storage', handleEventsChanged);
+    };
   }, []);
 
   const handleClear = () => {

@@ -1,5 +1,9 @@
 {
+  "firestore": {
+    "rules": "firestore.rules"
+  },
   "hosting": {
+    "site": "smart-att-iic",
     "public": "frontend/dist",
     "ignore": [
       "firebase.json",

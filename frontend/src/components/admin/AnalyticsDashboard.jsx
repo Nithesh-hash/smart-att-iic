@@ -176,31 +176,23 @@ export default function AnalyticsDashboard() {
       }
     });
 
-    let topMonth = 'Jul';
-    let topMonthCount = 4;
-    Object.entries(monthCounts).forEach(([m, c]) => {
-      if (c > topMonthCount) {
-        topMonth = m;
-        topMonthCount = c;
-      }
-    });
+    const sortedMonths = Object.entries(monthCounts).sort((a, b) => b[1] - a[1]);
+    const topMonth = sortedMonths.length > 0 ? sortedMonths[0][0] : 'None';
+    const topMonthCount = sortedMonths.length > 0 ? sortedMonths[0][1] : 0;
 
     const multiPercent = totalEventsRegistered > 0
       ? Math.round((multiDayCount / totalEventsRegistered) * 100)
-      : 50;
+      : 0;
 
     const typeCounts = {};
     filteredEvents.forEach(e => {
-      typeCounts[e.eventType] = (typeCounts[e.eventType] || 0) + 1;
-    });
-    let topType = 'Mentoring Session';
-    let topTypeCount = 3;
-    Object.entries(typeCounts).forEach(([t, c]) => {
-      if (c > topTypeCount) {
-        topType = t;
-        topTypeCount = c;
+      if (e.eventType) {
+        typeCounts[e.eventType] = (typeCounts[e.eventType] || 0) + 1;
       }
     });
+    const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+    const topType = sortedTypes.length > 0 ? sortedTypes[0][0] : 'None';
+    const topTypeCount = sortedTypes.length > 0 ? sortedTypes[0][1] : 0;
 
     const coordCounts = {};
     filteredEvents.forEach(e => {
@@ -208,14 +200,9 @@ export default function AnalyticsDashboard() {
         coordCounts[e.coordinatorName] = (coordCounts[e.coordinatorName] || 0) + 1;
       }
     });
-    let topCoord = 'JOTHISH KUMAR M';
-    let topCoordCount = 2;
-    Object.entries(coordCounts).forEach(([cd, c]) => {
-      if (c > topCoordCount) {
-        topCoord = cd;
-        topCoordCount = c;
-      }
-    });
+    const sortedCoords = Object.entries(coordCounts).sort((a, b) => b[1] - a[1]);
+    const topCoord = sortedCoords.length > 0 ? sortedCoords[0][0] : 'None';
+    const topCoordCount = sortedCoords.length > 0 ? sortedCoords[0][1] : 0;
 
     const venueCounts = {};
     filteredEvents.forEach(e => {
@@ -225,14 +212,9 @@ export default function AnalyticsDashboard() {
         }
       });
     });
-    let topVenue = 'PRP A block Room no. 156';
-    let topVenueCount = 2;
-    Object.entries(venueCounts).forEach(([v, c]) => {
-      if (c > topVenueCount) {
-        topVenue = v;
-        topVenueCount = c;
-      }
-    });
+    const sortedVenues = Object.entries(venueCounts).sort((a, b) => b[1] - a[1]);
+    const topVenue = sortedVenues.length > 0 ? sortedVenues[0][0] : 'None';
+    const topVenueCount = sortedVenues.length > 0 ? sortedVenues[0][1] : 0;
 
     const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
     const weekdayCounts = {};
@@ -246,14 +228,9 @@ export default function AnalyticsDashboard() {
         }
       }
     });
-    let busiestDay = 'Thursday';
-    let busiestDayCount = 3;
-    Object.entries(weekdayCounts).forEach(([d, c]) => {
-      if (c > busiestDayCount) {
-        busiestDay = d;
-        busiestDayCount = c;
-      }
-    });
+    const sortedDays = Object.entries(weekdayCounts).sort((a, b) => b[1] - a[1]);
+    const busiestDay = sortedDays.length > 0 ? sortedDays[0][0] : 'None';
+    const busiestDayCount = sortedDays.length > 0 ? sortedDays[0][1] : 0;
 
     return {
       topMonth,
@@ -275,16 +252,12 @@ export default function AnalyticsDashboard() {
     const counts = {};
     filteredEvents.forEach(e => {
       e.days?.forEach(d => {
-        const v = (d.venue || 'PRP A block Room no. 156').trim();
-        counts[v] = (counts[v] || 0) + 1;
+        if (d.venue) {
+          const v = d.venue.trim();
+          counts[v] = (counts[v] || 0) + 1;
+        }
       });
     });
-    // Ensure default items if empty
-    if (Object.keys(counts).length === 0) {
-      counts['PRP A block Room no. 156'] = 2;
-      counts['Thtyg'] = 1;
-      counts['PRP- A BLOCK 156'] = 1;
-    }
     return Object.entries(counts)
       .map(([venue, count]) => ({ venue, count }))
       .sort((a, b) => b.count - a.count)
@@ -299,12 +272,6 @@ export default function AnalyticsDashboard() {
         counts[c] = (counts[c] || 0) + 1;
       }
     });
-    // Ensure default items if empty
-    if (Object.keys(counts).length === 0) {
-      counts['Jothish Kumar M'] = 2;
-      counts['Ybyg'] = 1;
-      counts['Dr.Jothish Kumar'] = 1;
-    }
     return Object.entries(counts)
       .map(([name, count]) => ({ name, count }))
       .sort((a, b) => b.count - a.count)
@@ -315,12 +282,10 @@ export default function AnalyticsDashboard() {
   const eventTypeBreakdown = useMemo(() => {
     const counts = {};
     filteredEvents.forEach(e => {
-      counts[e.eventType] = (counts[e.eventType] || 0) + 1;
+      if (e.eventType) {
+        counts[e.eventType] = (counts[e.eventType] || 0) + 1;
+      }
     });
-    if (Object.keys(counts).length === 0) {
-      counts['Mentoring Session'] = 3;
-      counts['Workshop'] = 1;
-    }
     const total = Object.values(counts).reduce((a, b) => a + b, 0) || 1;
     return Object.entries(counts).map(([type, count]) => ({
       type,
@@ -338,21 +303,17 @@ export default function AnalyticsDashboard() {
         counts[sch] = (counts[sch] || 0) + (typeof cnt === 'number' ? cnt : 1);
       });
     });
-    if (Object.keys(counts).length === 0) {
-      counts['SCORE'] = 1;
-      counts['SCOPE'] = 1;
-    }
     return Object.entries(counts).map(([school, count]) => ({
       school,
       count
-    }));
+    })).sort((a, b) => b.count - a.count);
   }, [filteredHistory]);
 
   // Segregation Stats Table Data
-  const lastSegregationText = filteredHistory[0]?.segregatedOn || '12-10-2026 12:02 PM';
+  const lastSegregationText = filteredHistory[0]?.segregatedOn || 'None yet';
   const lastEventRegisteredText = filteredEvents[0]
-    ? `${filteredEvents[0].days?.[0]?.date || '2026-07-16'} (${filteredEvents[0].eventName})`
-    : '2026-07-16 (IIC Student Council Meeting)';
+    ? `${filteredEvents[0].days?.[0]?.date || ''} (${filteredEvents[0].eventName})`
+    : 'None yet';
 
   // Chart Rendering: Image 1 & Image 2 Charts
   useEffect(() => {
@@ -369,10 +330,6 @@ export default function AnalyticsDashboard() {
         }
       }
     });
-    // Default July = 4 if demo
-    if (eventsPerMonth.every(v => v === 0) || (filteredEvents.some(e => e.eventName === 'Gyhby') && eventsPerMonth[6] === 0)) {
-      eventsPerMonth[6] = 4;
-    }
 
     filteredHistory.forEach(h => {
       const dStr = h.timestamp || h.segregatedOn;
@@ -383,10 +340,6 @@ export default function AnalyticsDashboard() {
         }
       }
     });
-    // Default Oct = 1 if demo
-    if (segregationsPerMonth.every(v => v === 0) || (filteredHistory.length > 0 && segregationsPerMonth[9] === 0)) {
-      segregationsPerMonth[9] = 1;
-    }
 
     // 1. Image 1: Registered vs Segregated (Monthly Trend) Line Spline Chart
     if (trendLineCanvasRef.current) {
@@ -863,10 +816,18 @@ export default function AnalyticsDashboard() {
             → 📊 <span className="highlight-gold">{smartInsights.multiPercent}%</span> of events are multi-day ({multiDayCount} of {totalEventsRegistered}).
           </li>
           <li>
-            → 🏆 Most attended event: <span className="highlight-gold">Gyhby</span> (2 students across 2 schools).
+            → 🏆 Most attended event:{' '}
+            <span className="highlight-gold">
+              {filteredHistory[0]?.eventsSegregated?.split('\n')[0]?.replace(/^•\s*/, '') || filteredEvents[0]?.eventName || 'None yet'}
+            </span>
+            {filteredHistory[0]?.totalStudents ? ` (${filteredHistory[0].totalStudents} students across ${filteredHistory[0].schoolsRepresented || 1} schools).` : ''}
           </li>
           <li>
-            → 🏫 Most participating school: <span className="highlight-gold">SCOPE</span> (1 students).
+            → 🏫 Most participating school:{' '}
+            <span className="highlight-gold">
+              {schoolAttendance[0]?.school || 'None yet'}
+            </span>
+            {schoolAttendance[0]?.count ? ` (${schoolAttendance[0].count} students).` : ''}
           </li>
           <li>
             → 🏷️ Most common event type: <span className="highlight-gold">{smartInsights.topType}</span> ({smartInsights.topTypeCount} events).

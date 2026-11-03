@@ -49,7 +49,11 @@ export default function MultiEventBatch() {
     loadAllEvents();
     const handleEventsChanged = () => loadAllEvents();
     window.addEventListener('smart_att_events_changed', handleEventsChanged);
-    return () => window.removeEventListener('smart_att_events_changed', handleEventsChanged);
+    window.addEventListener('storage', handleEventsChanged);
+    return () => {
+      window.removeEventListener('smart_att_events_changed', handleEventsChanged);
+      window.removeEventListener('storage', handleEventsChanged);
+    };
   }, []);
 
   const handleFindEvents = () => {

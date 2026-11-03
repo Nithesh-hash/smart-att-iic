@@ -63,7 +63,7 @@ export default function Header({
             <div className="user-circle-logo">
               <img src="/vit-emblem.webp" alt="VIT Emblem" className="vit-circle-img" />
             </div>
-            <span className="user-profile-name">Attendance</span>
+            <span className="user-profile-name">{currentUser?.name || currentUser?.username || 'Attendance'}</span>
             <span className="dropdown-caret">▾</span>
           </button>
 
@@ -73,8 +73,8 @@ export default function Header({
                 <div className="user-circle-logo-large">
                   <img src="/vit-emblem.webp" alt="VIT Emblem" className="vit-circle-img" />
                 </div>
-                <h3 className="profile-dropdown-name">Attendance</h3>
-                <p className="profile-dropdown-sub">VIT-IST Admin</p>
+                <h3 className="profile-dropdown-name">{currentUser?.name || currentUser?.username || 'Attendance'}</h3>
+                <p className="profile-dropdown-sub">{currentUser?.role || 'VIT-IST Admin'}</p>
               </div>
 
               {/* Install as Webapp Button (Between VIT-IST admin and Signout) */}

@@ -18,25 +18,43 @@ export default function LoginModal({ onLoginSuccess }) {
     e.preventDefault();
     setError('');
 
-    if (!username.trim() || !password.trim()) {
-      setError('Please enter both username and password.');
+    const trimmedInput = username.trim();
+    if (!trimmedInput || !password.trim()) {
+      setError('Please enter both username/email and password.');
       return;
     }
 
-    const validUsername = import.meta.env.VITE_AUTH_USERNAME || 'Attendance';
+    const validUsername = (import.meta.env.VITE_AUTH_USERNAME || 'Attendance').trim();
     const validPassword = import.meta.env.VITE_AUTH_PASSWORD || 'SPM@123';
 
-    if (username.trim() === validUsername && password === validPassword) {
+    const validEmail2 = (import.meta.env.VITE_AUTH_EMAIL_2 || 'prasanth.b@vit.ac.in').trim();
+    let validPassword2 = import.meta.env.VITE_AUTH_PASSWORD_2 || 'Nov@#7898';
+    if (validPassword2 === 'Nov@' || !validPassword2) {
+      validPassword2 = 'Nov@#7898';
+    }
+
+    if (trimmedInput.toLowerCase() === validUsername.toLowerCase() && password === validPassword) {
       const user = {
         username: validUsername,
         name: 'Attendance',
+        email: 'attendance@vit.ac.in',
+        role: 'VIT-IST Admin',
+        loggedInAt: new Date().toISOString()
+      };
+      sessionStorage.setItem('smart_att_user', JSON.stringify(user));
+      onLoginSuccess(user);
+    } else if (trimmedInput.toLowerCase() === validEmail2.toLowerCase() && password === validPassword2) {
+      const user = {
+        username: validEmail2,
+        name: 'prasanth.b@vit.ac.in',
+        email: validEmail2,
         role: 'VIT-IST Admin',
         loggedInAt: new Date().toISOString()
       };
       sessionStorage.setItem('smart_att_user', JSON.stringify(user));
       onLoginSuccess(user);
     } else {
-      setError('Invalid username or password.');
+      setError('Invalid username/email or password.');
     }
   };
 
@@ -72,7 +90,7 @@ export default function LoginModal({ onLoginSuccess }) {
               <input
                 type="text"
                 className="exact-form-input"
-                placeholder="Username"
+                placeholder="Username / Email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoFocus
