@@ -421,7 +421,7 @@ export default function QuickSegregation() {
             totalStudents: result.totalStudents || 0,
             schoolsRepresented: result.schoolsCount || 0,
             filesCount: files.length,
-            zipName: result.filename,
+            zipName: result.filename || result.zipName || 'all_schools.zip',
             downloadUrl: zipBlobUrl,
             timestamp: new Date().toISOString()
           });

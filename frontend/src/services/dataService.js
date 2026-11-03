@@ -69,9 +69,9 @@ export function isDemoEvent(ev) {
   const coord = String(ev.coordinatorName || '').trim().toLowerCase();
   const school = String(ev.school || '').trim().toLowerCase();
 
-  if (id.startsWith('ev_1_') || id.startsWith('ev_2_') || id.startsWith('ev_3_') || id.startsWith('ev_4_')) return true;
-  if (name === 'demo' || name === 'gyhby' || name === 'iic student council meeting' || name === 'summer startup launch pad') return true;
-  if (coord === 'ybyg' || school === 'ybyv') return true;
+  // Purge only explicit mock IDs and fake demo entries
+  if (id.startsWith('ev_mock_') || id === 'ev_1_iic_council' || id === 'ev_2_summer_startup_1' || id === 'ev_3_summer_startup_2' || id === 'ev_4_gyhby') return true;
+  if (name === 'gyhby' || coord === 'ybyg' || school === 'ybyv') return true;
   return false;
 }
 
@@ -85,9 +85,28 @@ export function isDemoHistory(h) {
   const coord = String(h.coordinatorFormatted || '').toLowerCase();
   const zip = String(h.zipName || '').toLowerCase();
 
-  if (id === 'hist_1' || id.startsWith('hist_1_')) return true;
+  // Purge only explicit mock history IDs and fake demo runs
+  if (id === 'hist_1' || id.startsWith('hist_mock_')) return true;
   if (eventsText.includes('gyhby') || coord.includes('ybyg') || coord.includes('ybyv') || zip.includes('all_schools_2026-07-01_120228.zip')) return true;
   return false;
+}
+
+/**
+ * Recursively sanitize an object for Firestore:
+ * - Drops any keys with value `undefined` (which cause Firestore invalid-argument crash)
+ * - Ensures safe JSON-compatible values
+ */
+export function sanitizeForFirestore(obj) {
+  if (obj === null || obj === undefined) return null;
+  if (typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizeForFirestore);
+  const clean = {};
+  for (const [key, val] of Object.entries(obj)) {
+    if (val !== undefined && typeof val !== 'function') {
+      clean[key] = (val !== null && typeof val === 'object') ? sanitizeForFirestore(val) : val;
+    }
+  }
+  return clean;
 }
 
 /**
@@ -141,9 +160,19 @@ export async function getEvents() {
         });
 
         const cleanRemote = remoteList.filter(e => !isDemoEvent(e));
-        cleanRemote.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
-        localStorage.setItem(EVENTS_KEY, JSON.stringify(cleanRemote));
-        return cleanRemote;
+
+        // CRITICAL MERGE: Merge cleanRemote with localList
+        const remoteIds = new Set(cleanRemote.map(e => e.id));
+        const unsyncedLocal = localList.filter(l => !remoteIds.has(l.id));
+
+        const merged = [...unsyncedLocal, ...cleanRemote];
+        merged.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+        try {
+          localStorage.setItem(EVENTS_KEY, JSON.stringify(merged));
+        } catch (e) {}
+
+        return merged;
       } else {
         return localList;
       }
@@ -184,7 +213,8 @@ export async function addEvent(eventData) {
   const db = getDb();
   if (db) {
     try {
-      await setDoc(doc(db, 'events', id), saved);
+      const sanitized = sanitizeForFirestore(saved);
+      await setDoc(doc(db, 'events', id), sanitized);
     } catch (err) {
       console.warn('Firestore event write error:', err);
     }
@@ -261,11 +291,31 @@ export async function getSegregationHistory() {
           }
         });
 
-        const cleanRemote = remoteList
-          .filter(h => !isDemoHistory(h))
-          .sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
-        localStorage.setItem(HISTORY_KEY, JSON.stringify(cleanRemote));
-        return cleanRemote;
+        const cleanRemote = remoteList.filter(h => !isDemoHistory(h));
+
+        // CRITICAL MERGE: Merge cleanRemote with localList
+        // 1. Keep local records that haven't synced to Firestore yet
+        // 2. Preserve in-memory blob URLs (downloadUrl) from localList
+        const localMap = new Map(localList.map(h => [h.id, h]));
+        const remoteIds = new Set(cleanRemote.map(h => h.id));
+
+        const enrichedRemote = cleanRemote.map(r => {
+          const localItem = localMap.get(r.id);
+          return {
+            ...r,
+            downloadUrl: localItem?.downloadUrl || r.downloadUrl || null
+          };
+        });
+
+        const unsyncedLocal = localList.filter(l => !remoteIds.has(l.id));
+        const merged = [...unsyncedLocal, ...enrichedRemote];
+        merged.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
+
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+        } catch (e) {}
+
+        return merged;
       } else {
         return localList;
       }
@@ -301,9 +351,14 @@ export async function addSegregationHistory(historyRecord) {
     timestamp: historyRecord.timestamp || now.toISOString()
   };
 
+  const itemToStoreLocally = {
+    ...saved,
+    downloadUrl: downloadUrl || null
+  };
+
   const current = getSegregationHistorySync();
   const updated = [
-    { ...saved, downloadUrl },
+    itemToStoreLocally,
     ...current.filter(h => h.id !== id && !isDemoHistory(h))
   ];
   try {
@@ -314,7 +369,7 @@ export async function addSegregationHistory(historyRecord) {
 
   // Dispatch global events for instant UI reflection across tabs & components
   if (typeof window !== 'undefined') {
-    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: saved }));
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: itemToStoreLocally }));
     try {
       window.dispatchEvent(new Event('storage'));
     } catch (e) {}
@@ -324,13 +379,14 @@ export async function addSegregationHistory(historyRecord) {
   const db = getDb();
   if (db) {
     try {
-      await setDoc(doc(db, 'segregation_history', id), saved);
+      const sanitized = sanitizeForFirestore(saved);
+      await setDoc(doc(db, 'segregation_history', id), sanitized);
     } catch (err) {
       console.warn('Firestore history write error:', err);
     }
   }
 
-  return saved;
+  return itemToStoreLocally;
 }
 
 export async function deleteSegregationHistory(historyId) {

@@ -13,17 +13,20 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
-import { getSegregationHistory, deleteSegregationHistory } from '../../services/dataService';
+import { getSegregationHistory, getSegregationHistorySync, deleteSegregationHistory } from '../../services/dataService';
 
-// Format YYYY-MM-DD to DD-MM-YYYY
+// Format YYYY-MM-DD or comma-separated list of YYYY-MM-DD to DD-MM-YYYY
 function formatDateDDMMYYYY(dateStr) {
   if (!dateStr) return '';
-  if (/^\d{2}-\d{2}-\d{4}$/.test(dateStr)) return dateStr;
-  const parts = dateStr.split('-');
-  if (parts.length === 3 && parts[0].length === 4) {
-    return `${parts[2]}-${parts[1]}-${parts[0]}`;
-  }
-  return dateStr;
+  return dateStr.split(',').map(tok => {
+    const s = tok.trim();
+    if (/^\d{2}-\d{2}-\d{4}$/.test(s)) return s;
+    const parts = s.split('-');
+    if (parts.length === 3 && parts[0].length === 4) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
+    }
+    return s;
+  }).join(', ');
 }
 
 // Format ISO string to DD-MM-YYYY hh:mm A
@@ -44,8 +47,14 @@ function formatTimestamp(isoStr) {
 }
 
 export default function SegregationHistory() {
-  const [historyList, setHistoryList] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [historyList, setHistoryList] = useState(() => {
+    try {
+      return getSegregationHistorySync();
+    } catch {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filters matching screenshot
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,7 +69,6 @@ export default function SegregationHistory() {
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
   const loadHistory = async () => {
-    setIsLoading(true);
     try {
       const list = await getSegregationHistory();
       setHistoryList(list);
@@ -73,7 +81,10 @@ export default function SegregationHistory() {
 
   useEffect(() => {
     loadHistory();
-    const handleHistoryChanged = () => loadHistory();
+    const handleHistoryChanged = () => {
+      setHistoryList(getSegregationHistorySync());
+      loadHistory();
+    };
     window.addEventListener('smart_att_history_changed', handleHistoryChanged);
     window.addEventListener('storage', handleHistoryChanged);
     return () => {

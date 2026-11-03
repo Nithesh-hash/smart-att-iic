@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
-import { getEvents, addSegregationHistory, getSchoolMappings } from '../services/dataService';
+import { getEvents, getEventsSync, addSegregationHistory, getSchoolMappings } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
 
 export default function MultiEventBatch() {
@@ -25,7 +25,13 @@ export default function MultiEventBatch() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  const [allRegisteredEvents, setAllRegisteredEvents] = useState([]);
+  const [allRegisteredEvents, setAllRegisteredEvents] = useState(() => {
+    try {
+      return getEventsSync();
+    } catch {
+      return [];
+    }
+  });
   const [matchingEvents, setMatchingEvents] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
 
@@ -41,13 +47,20 @@ export default function MultiEventBatch() {
   const [segregationResult, setSegregationResult] = useState(null);
 
   const loadAllEvents = async () => {
-    const events = await getEvents();
-    setAllRegisteredEvents(events);
+    try {
+      const events = await getEvents();
+      setAllRegisteredEvents(events);
+    } catch (err) {
+      console.warn('Failed to load events:', err);
+    }
   };
 
   useEffect(() => {
     loadAllEvents();
-    const handleEventsChanged = () => loadAllEvents();
+    const handleEventsChanged = () => {
+      setAllRegisteredEvents(getEventsSync());
+      loadAllEvents();
+    };
     window.addEventListener('smart_att_events_changed', handleEventsChanged);
     window.addEventListener('storage', handleEventsChanged);
     return () => {
@@ -181,31 +194,31 @@ export default function MultiEventBatch() {
       // Record in Segregation History
       try {
         const eventsNamesList = compiledSlots.map(s => {
-          const firstDay = s.event.days?.[0] || {};
-          return `• ${s.event.eventName} | ${firstDay.venue || 'Campus'} | ${firstDay.date || result.dateTag} (${firstDay.startTime || '9:00 AM'} - ${firstDay.endTime || '5:00 PM'})`;
+          const firstDay = s.event?.days?.[0] || {};
+          return `• ${s.event?.eventName || 'Event'} | ${firstDay.venue || 'Campus'} | ${firstDay.date || result.dateTag} (${firstDay.startTime || '9:00 AM'} - ${firstDay.endTime || '5:00 PM'})`;
         }).join('\n');
 
         const firstCoord = compiledSlots[0]?.event;
         const coordFormatted = firstCoord
-          ? `${firstCoord.coordinatorName} (${firstCoord.school}${firstCoord.phoneNumber ? ` | ${firstCoord.phoneNumber}` : ''})`
-          : 'Faculty Admin';
+          ? `${firstCoord.coordinatorName || 'Faculty'} (${firstCoord.school || 'SCOPE'}${firstCoord.phoneNumber ? ` | ${firstCoord.phoneNumber}` : ''})`
+          : 'Faculty Admin (VIT-IST)';
 
         const zipBlobUrl = result?.blob ? window.URL.createObjectURL(result.blob) : null;
 
         await addSegregationHistory({
-          eventDates: compiledSlots.map(s => s.event.days?.[0]?.date).filter(Boolean).join(', ') || result.dateTag,
-          eventsSegregated: eventsNamesList,
+          eventDates: compiledSlots.map(s => s.event?.days?.[0]?.date).filter(Boolean).join(', ') || result.dateTag || new Date().toISOString().split('T')[0],
+          eventsSegregated: eventsNamesList || '• Attendance Segregation',
           coordinatorFormatted,
-          count: compiledSlots.length,
-          zipName: result.zipName,
+          count: compiledSlots.length || 1,
+          zipName: result.zipName || `all_schools_${Date.now()}.zip`,
           downloadUrl: zipBlobUrl,
-          totalStudents: result.totalStudents,
-          schoolsRepresented: result.schoolsCount,
-          filesCount: result.totalFiles,
+          totalStudents: Number(result.totalStudents) || 0,
+          schoolsRepresented: Number(result.schoolsCount) || 0,
+          filesCount: Number(result.totalFiles) || 1,
           timestamp: new Date().toISOString()
         });
       } catch (histErr) {
-        console.warn('Could not record history:', histErr);
+        console.error('Failed to record segregation history:', histErr);
       }
     } catch (err) {
       console.error('Segregation error:', err);

@@ -13,7 +13,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2 } from 'lucide-react';
-import { getEvents, deleteEvent, EVENT_TYPES } from '../../services/dataService';
+import { getEvents, getEventsSync, deleteEvent, EVENT_TYPES } from '../../services/dataService';
 
 // Format YYYY-MM-DD to DD-MM-YYYY
 function formatDateDDMMYYYY(dateStr) {
@@ -27,8 +27,14 @@ function formatDateDDMMYYYY(dateStr) {
 }
 
 export default function EventsManagement() {
-  const [events, setEvents] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [events, setEvents] = useState(() => {
+    try {
+      return getEventsSync();
+    } catch {
+      return [];
+    }
+  });
+  const [isLoading, setIsLoading] = useState(false);
 
   // Filters matching screenshot
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,7 +47,6 @@ export default function EventsManagement() {
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
   const loadEvents = async () => {
-    setIsLoading(true);
     try {
       const list = await getEvents();
       setEvents(list);
@@ -54,7 +59,10 @@ export default function EventsManagement() {
 
   useEffect(() => {
     loadEvents();
-    const handleEventsChanged = () => loadEvents();
+    const handleEventsChanged = () => {
+      setEvents(getEventsSync());
+      loadEvents();
+    };
     window.addEventListener('smart_att_events_changed', handleEventsChanged);
     window.addEventListener('storage', handleEventsChanged);
     return () => {
