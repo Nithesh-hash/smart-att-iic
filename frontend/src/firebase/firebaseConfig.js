@@ -16,7 +16,10 @@ export function getSavedFirebaseConfig() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.apiKey && parsed.projectId) {
+        return parsed;
+      }
     }
   } catch (err) {
     console.warn('Failed to parse saved Firebase config:', err);
@@ -24,7 +27,7 @@ export function getSavedFirebaseConfig() {
 
   // Fallback to default project environment settings if provided
   return {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY || 'AIzaSyA3XCHU-QGoPxEEbsEXmMhO8D0KhgWjNJY',
     authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || 'smart-att-iic.firebaseapp.com',
     projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || 'smart-att-iic',
     storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || 'smart-att-iic.firebasestorage.app',

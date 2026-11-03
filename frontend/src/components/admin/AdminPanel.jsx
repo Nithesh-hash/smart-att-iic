@@ -19,7 +19,16 @@ const ADMIN_SUBTABS = {
 };
 
 export default function AdminPanel() {
-  const [activeSubTab, setActiveSubTab] = useState(ADMIN_SUBTABS.EVENTS);
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    try {
+      const pending = sessionStorage.getItem('smart_att_admin_subtab');
+      if (pending && Object.values(ADMIN_SUBTABS).includes(pending)) {
+        sessionStorage.removeItem('smart_att_admin_subtab');
+        return pending;
+      }
+    } catch (e) {}
+    return ADMIN_SUBTABS.EVENTS;
+  });
 
   useEffect(() => {
     const handleSubTab = (e) => {

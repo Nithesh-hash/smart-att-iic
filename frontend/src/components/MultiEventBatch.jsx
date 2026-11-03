@@ -365,6 +365,9 @@ export default function MultiEventBatch() {
             <button
               type="button"
               onClick={() => {
+                try {
+                  sessionStorage.setItem('smart_att_admin_subtab', 'history');
+                } catch (e) {}
                 window.dispatchEvent(new CustomEvent('smart_att_navigate', { detail: 'admin' }));
                 window.dispatchEvent(new CustomEvent('smart_att_admin_subtab', { detail: 'history' }));
               }}
