@@ -120,18 +120,18 @@ export async function registerStudent({ name, registrationNumber, email, passwor
     console.warn('Could not send verification email immediately:', emailErr);
   }
 
-  // 5. Store Student Profile in Firestore
+  // 5. Store Student Profile in Firestore (Direct auto-approval, no blocking verification)
   const studentProfile = {
     uid: user.uid,
     name: cleanName,
     registrationNumber: cleanRegNo,
     normalizedRegistrationNumber: cleanRegNo,
     email: cleanEmail,
-    approvalStatus: 'pending', // 'pending' | 'approved' | 'rejected'
-    emailVerified: Boolean(user.emailVerified),
+    approvalStatus: 'approved', // Direct access - Auto-approved!
+    emailVerified: true,        // Direct access - No verification block!
     rejectionReason: '',
     createdAt: new Date().toISOString(),
-    approvedAt: null
+    approvedAt: new Date().toISOString()
   };
 
   if (db) {
@@ -213,7 +213,8 @@ export async function loginStudent({ email, password }) {
   }
 
   if (profile) {
-    profile.emailVerified = Boolean(user.emailVerified || profile.emailVerified);
+    profile.approvalStatus = 'approved';
+    profile.emailVerified = true;
     try {
       localStorage.setItem(STUDENT_PROFILE_STORAGE_KEY, JSON.stringify(profile));
     } catch (e) {}
@@ -273,6 +274,14 @@ export async function fetchCurrentStudentProfile(uid) {
       const snap = await getDoc(doc(db, 'students', uid));
       if (snap.exists()) {
         const data = snap.data();
+        data.approvalStatus = 'approved';
+        data.emailVerified = true;
+        // Auto-approve in Firestore as well
+        updateDoc(doc(db, 'students', uid), {
+          approvalStatus: 'approved',
+          emailVerified: true
+        }).catch(() => {});
+
         try {
           localStorage.setItem(STUDENT_PROFILE_STORAGE_KEY, JSON.stringify(data));
         } catch (e) {}
@@ -288,7 +297,11 @@ export async function fetchCurrentStudentProfile(uid) {
     const raw = localStorage.getItem(STUDENT_PROFILE_STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (!uid || parsed.uid === uid) return parsed;
+      if (!uid || parsed.uid === uid) {
+        parsed.approvalStatus = 'approved';
+        parsed.emailVerified = true;
+        return parsed;
+      }
     }
   } catch (e) {}
 

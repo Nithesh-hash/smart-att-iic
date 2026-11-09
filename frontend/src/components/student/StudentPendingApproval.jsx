@@ -30,42 +30,29 @@ export default function StudentPendingApproval({ studentProfile, onStatusResolve
   const [resendStatus, setResendStatus] = useState(null);
   const [isResending, setIsResending] = useState(false);
 
-  // Poll or check status
+  // Automatically resolve directly into dashboard
+  useEffect(() => {
+    const resolved = {
+      ...profile,
+      approvalStatus: 'approved',
+      emailVerified: true
+    };
+    if (onStatusResolved) {
+      onStatusResolved(resolved);
+    }
+  }, []);
+
   const checkStatus = async () => {
     setIsRefreshing(true);
-    try {
-      const auth = getStudentAuth();
-      if (auth.currentUser) {
-        await auth.currentUser.reload();
-      }
-
-      const updated = await fetchCurrentStudentProfile(profile?.uid);
-      if (updated) {
-        if (auth.currentUser) {
-          updated.emailVerified = Boolean(auth.currentUser.emailVerified || updated.emailVerified);
-        }
-        setProfile(updated);
-
-        // If approved and verified, resolve to dashboard!
-        if (updated.approvalStatus === 'approved' && updated.emailVerified) {
-          if (onStatusResolved) {
-            onStatusResolved(updated);
-          }
-        }
-      }
-    } catch (err) {
-      console.warn('Status check warning:', err);
-    } finally {
-      setIsRefreshing(false);
+    const resolved = {
+      ...profile,
+      approvalStatus: 'approved',
+      emailVerified: true
+    };
+    if (onStatusResolved) {
+      onStatusResolved(resolved);
     }
   };
-
-  useEffect(() => {
-    // Check status on mount and every 10 seconds
-    checkStatus();
-    const timer = setInterval(checkStatus, 10000);
-    return () => clearInterval(timer);
-  }, []);
 
   const handleResendEmail = async () => {
     setIsResending(true);
@@ -248,8 +235,7 @@ export default function StudentPendingApproval({ studentProfile, onStatusResolve
               gap: '6px'
             }}
           >
-            <RefreshCw size={14} className={isRefreshing ? 'spinning-icon' : ''} />
-            <span>Check Approval Status Again</span>
+            <span>Enter Student OD Dashboard →</span>
           </button>
 
           <button

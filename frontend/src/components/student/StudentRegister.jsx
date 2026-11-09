@@ -78,7 +78,6 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
         password
       });
 
-      setSuccessInfo(profile);
       if (onRegisterSuccess) {
         onRegisterSuccess(user, profile);
       }
@@ -99,66 +98,6 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
       setIsLoading(false);
     }
   };
-
-  if (successInfo) {
-    return (
-      <div className="login-page-screen">
-        {/* Top Institutional Header Banner (Image 3) */}
-        <div className="login-header-banner">
-          <div className="logos-row-center">
-            <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
-            <img src="/iic-logo.png" alt="IIC Logo" className="official-iic-logo" />
-          </div>
-          <p className="inst-office-text">
-            Office of Innovation, Startup and Technology Transfer (VIT-IST)
-          </p>
-          <h1 className="inst-main-title">
-            SMART ATTENDANCE SEGREGATOR
-          </h1>
-        </div>
-
-        {/* Centered Success Card Body */}
-        <div className="login-card-body-wrapper">
-          <div className="exact-login-card" style={{ width: '420px', maxWidth: '92vw', textAlign: 'center' }}>
-            <div style={{ fontSize: '38px', marginBottom: '8px' }}>✅</div>
-            <h2 className="login-card-title" style={{ color: '#166534', marginBottom: '14px' }}>
-              Registration Submitted!
-            </h2>
-
-            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
-              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
-                <strong>Name:</strong> {successInfo.name}
-              </div>
-              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
-                <strong>Registration No:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#1d4ed8' }}>{successInfo.registrationNumber}</span>
-              </div>
-              <div style={{ fontSize: '13px', color: '#475569' }}>
-                <strong>VIT Email:</strong> {successInfo.email}
-              </div>
-            </div>
-
-            <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', textAlign: 'left', marginBottom: '18px', fontSize: '12.5px', color: '#92400e', lineHeight: '1.5' }}>
-              <strong>Next Steps:</strong>
-              <div style={{ marginTop: '4px' }}>
-                1. Please check your VIT student inbox to verify your email.
-              </div>
-              <div>
-                2. Your account is currently awaiting admin approval by coordinators.
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="exact-btn-signin"
-              onClick={onSwitchToLogin}
-            >
-              Proceed to Student Sign In
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="login-page-screen">

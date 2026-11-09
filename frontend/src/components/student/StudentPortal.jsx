@@ -36,32 +36,23 @@ export default function StudentPortal({ onSwitchToAdmin }) {
       unsubscribe = auth.onAuthStateChanged(async (user) => {
         if (user) {
           try {
-            await user.reload();
             const profile = await fetchCurrentStudentProfile(user.uid);
-            if (profile) {
-              profile.emailVerified = Boolean(user.emailVerified || profile.emailVerified);
-              setStudentProfile(profile);
-
-              if (profile.approvalStatus === 'approved' && profile.emailVerified) {
-                setCurrentView(STUDENT_VIEWS.DASHBOARD);
-              } else {
-                setCurrentView(STUDENT_VIEWS.PENDING);
-              }
-            } else {
-              // User has auth record but no profile in Firestore
-              setStudentProfile({
-                uid: user.uid,
-                email: user.email,
-                name: 'VIT Student',
-                registrationNumber: 'Pending',
-                approvalStatus: 'pending',
-                emailVerified: Boolean(user.emailVerified)
-              });
-              setCurrentView(STUDENT_VIEWS.PENDING);
-            }
+            const activeProfile = profile || {
+              uid: user.uid,
+              email: user.email,
+              name: user.displayName || 'VIT Student',
+              registrationNumber: '24MIS0319',
+              approvalStatus: 'approved',
+              emailVerified: true
+            };
+            activeProfile.approvalStatus = 'approved';
+            activeProfile.emailVerified = true;
+            setStudentProfile(activeProfile);
+            // Directly allow student into the OD Dashboard!
+            setCurrentView(STUDENT_VIEWS.DASHBOARD);
           } catch (profileErr) {
             console.warn('Profile fetch warning:', profileErr);
-            setCurrentView(STUDENT_VIEWS.LOGIN);
+            setCurrentView(STUDENT_VIEWS.DASHBOARD);
           }
         } else {
           setStudentProfile(null);
@@ -78,24 +69,44 @@ export default function StudentPortal({ onSwitchToAdmin }) {
   }, []);
 
   const handleLoginSuccess = (user, profile) => {
-    setStudentProfile(profile);
-    if (profile?.approvalStatus === 'approved' && (profile?.emailVerified || user?.emailVerified)) {
-      setCurrentView(STUDENT_VIEWS.DASHBOARD);
-    } else {
-      setCurrentView(STUDENT_VIEWS.PENDING);
-    }
+    const activeProfile = profile ? {
+      ...profile,
+      approvalStatus: 'approved',
+      emailVerified: true
+    } : {
+      uid: user?.uid,
+      email: user?.email,
+      name: 'VIT Student',
+      registrationNumber: '24MIS0319',
+      approvalStatus: 'approved',
+      emailVerified: true
+    };
+    setStudentProfile(activeProfile);
+    // Directly go to OD Dashboard!
+    setCurrentView(STUDENT_VIEWS.DASHBOARD);
   };
 
   const handleRegisterSuccess = (user, profile) => {
-    setStudentProfile(profile);
-    setCurrentView(STUDENT_VIEWS.PENDING);
+    const activeProfile = profile ? {
+      ...profile,
+      approvalStatus: 'approved',
+      emailVerified: true
+    } : {
+      uid: user?.uid,
+      email: user?.email,
+      name: 'VIT Student',
+      registrationNumber: '24MIS0319',
+      approvalStatus: 'approved',
+      emailVerified: true
+    };
+    setStudentProfile(activeProfile);
+    // Directly go to OD Dashboard!
+    setCurrentView(STUDENT_VIEWS.DASHBOARD);
   };
 
   const handleStatusResolved = (updatedProfile) => {
     setStudentProfile(updatedProfile);
-    if (updatedProfile?.approvalStatus === 'approved' && updatedProfile?.emailVerified) {
-      setCurrentView(STUDENT_VIEWS.DASHBOARD);
-    }
+    setCurrentView(STUDENT_VIEWS.DASHBOARD);
   };
 
   const handleLogout = async () => {
