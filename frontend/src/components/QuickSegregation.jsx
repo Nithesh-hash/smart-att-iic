@@ -32,6 +32,7 @@ import {
 } from '../services/attendanceProcessor';
 import { addSegregationHistory, updateSegregationHistory } from '../services/dataService';
 import { autoExtractAndStoreODRecords } from '../services/odExtractionEngine';
+import { saveZipToIndexedDB } from '../services/zipStorageService';
 
 const STORAGE_KEY = 'vit_attendance_custom_schools_mapping';
 
@@ -328,6 +329,11 @@ export default function QuickSegregation() {
         const eventsListFormatted = clientData.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.eventDate || e.date || 'Today'} (${e.eventTime || e.startTime || '9:00 AM - 5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
         const eventDateVal = clientData.events?.[0]?.eventDate || clientData.events?.[0]?.date || clientData.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
 
+        const schoolBreakdown = {};
+        (clientData.schoolSummary || []).forEach(s => {
+          if (s.school) schoolBreakdown[s.school] = s.count || 0;
+        });
+
         const histRecord = await addSegregationHistory({
           eventDates: eventDateVal,
           eventsSegregated: eventsListFormatted,
@@ -337,6 +343,7 @@ export default function QuickSegregation() {
           eventsProcessed: clientData.events?.length || 1,
           totalStudents: clientData.totalStudentsProcessed || 0,
           schoolsRepresented: clientData.schoolSummary?.length || 0,
+          schoolBreakdown,
           filesCount: filesToAnalyze.length,
           zipName: clientData.suggestedZipName || `all_schools_${eventDateVal}.zip`,
           downloadUrl: null,
@@ -419,6 +426,11 @@ export default function QuickSegregation() {
         const eventsListFormatted = clientData.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.eventDate || e.date || 'Today'} (${e.eventTime || e.startTime || '9:00 AM - 5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
         const eventDateVal = clientData.events?.[0]?.eventDate || clientData.events?.[0]?.date || clientData.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
 
+        const schoolBreakdown = {};
+        (clientData.schoolSummary || []).forEach(s => {
+          if (s.school) schoolBreakdown[s.school] = s.count || 0;
+        });
+
         const histRecord = await addSegregationHistory({
           eventDates: eventDateVal,
           eventsSegregated: eventsListFormatted,
@@ -428,6 +440,7 @@ export default function QuickSegregation() {
           eventsProcessed: clientData.events?.length || 1,
           totalStudents: clientData.totalStudentsProcessed || 0,
           schoolsRepresented: clientData.schoolSummary?.length || 0,
+          schoolBreakdown,
           filesCount: filesToAnalyze.length,
           zipName: clientData.suggestedZipName || `all_schools_${eventDateVal}.zip`,
           downloadUrl: null,
@@ -524,6 +537,11 @@ export default function QuickSegregation() {
               timestamp: new Date().toISOString()
             });
             if (histRecord?.id) setActiveHistoryId(histRecord.id);
+          }
+
+          const targetZipId = activeHistoryId || 'quick_zip';
+          if (result?.blob) {
+            saveZipToIndexedDB(targetZipId, result.filename || result.zipName, result.blob).catch(() => {});
           }
 
           // ⚡ Automatic Background OD Extraction Engine

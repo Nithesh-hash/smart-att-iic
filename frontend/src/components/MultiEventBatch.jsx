@@ -20,6 +20,7 @@ import jsPDF from 'jspdf';
 import { getEvents, getEventsSync, addSegregationHistory, getSchoolMappings } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
 import { autoExtractAndStoreODRecords } from '../services/odExtractionEngine';
+import { saveZipToIndexedDB } from '../services/zipStorageService';
 
 export default function MultiEventBatch() {
   // Step 1: Date Range Filter (Starts empty so browser shows placeholder dd-mm-yyyy)
@@ -222,10 +223,16 @@ export default function MultiEventBatch() {
           downloadUrl: zipBlobUrl,
           totalStudents: Number(result.totalStudents) || 0,
           schoolsRepresented: Number(result.schoolsCount) || 0,
+          schoolBreakdown: result.schoolBreakdown || {},
           filesCount: Number(result.totalFiles) || 1,
           timestamp: new Date().toISOString()
         });
         console.log('✅ Segregation audit record successfully saved to history!');
+
+        // Persist ZIP in browser IndexedDB
+        if (segregationRecord?.id && result?.blob) {
+          saveZipToIndexedDB(segregationRecord.id, result.zipName, result.blob).catch(() => {});
+        }
 
         // ⚡ Automatic Background OD Extraction Engine (Zero Admin Friction)
         autoExtractAndStoreODRecords({

@@ -143,7 +143,7 @@ export default function AnalyticsDashboard() {
   // KPI Computations
   const totalEventsRegistered = filteredEvents.length;
   const totalSegregationsDone = filteredHistory.length;
-  const totalStudentsProcessed = filteredHistory.reduce((sum, h) => sum + (h.totalStudents || 2), 0);
+  const totalStudentsProcessed = filteredHistory.reduce((sum, h) => sum + (Number(h.totalStudents) || 0), 0);
 
   const singleDayCount = filteredEvents.filter(e => !e.isMultiDay).length;
   const multiDayCount = filteredEvents.filter(e => e.isMultiDay).length;
@@ -299,9 +299,15 @@ export default function AnalyticsDashboard() {
     const counts = {};
     filteredHistory.forEach(h => {
       const breakdown = h.schoolBreakdown || {};
-      Object.entries(breakdown).forEach(([sch, cnt]) => {
-        counts[sch] = (counts[sch] || 0) + (typeof cnt === 'number' ? cnt : 1);
-      });
+      if (Object.keys(breakdown).length > 0) {
+        Object.entries(breakdown).forEach(([sch, cnt]) => {
+          counts[sch] = (counts[sch] || 0) + (typeof cnt === 'number' ? cnt : 1);
+        });
+      } else {
+        const match = (h.coordinatorFormatted || '').match(/\(([^)|]+)/);
+        const sch = match ? match[1].trim() : 'SCORE';
+        counts[sch] = (counts[sch] || 0) + (Number(h.totalStudents) || 1);
+      }
     });
     return Object.entries(counts).map(([school, count]) => ({
       school,
@@ -421,18 +427,20 @@ export default function AnalyticsDashboard() {
     if (eventTypeSplitCanvasRef.current) {
       if (eventTypeSplitInstance.current) eventTypeSplitInstance.current.destroy();
 
-      const singleVal = singleDayCount || 2;
-      const multiVal = multiDayCount || 2;
+      const hasEvents = singleDayCount > 0 || multiDayCount > 0;
+      const splitLabels = hasEvents ? ['Single-Day', 'Multi-Day'] : ['No Events'];
+      const splitData = hasEvents ? [singleDayCount, multiDayCount] : [1];
+      const splitColors = hasEvents ? ['#190059', '#f59e0b'] : ['#e2e8f0'];
 
       eventTypeSplitInstance.current = new ChartJS(eventTypeSplitCanvasRef.current, {
         type: 'doughnut',
         data: {
-          labels: ['Single-Day', 'Multi-Day'],
+          labels: splitLabels,
           datasets: [
             {
-              data: [singleVal, multiVal],
-              backgroundColor: ['#190059', '#f59e0b'],
-              hoverBackgroundColor: ['#280875', '#d97706'],
+              data: splitData,
+              backgroundColor: splitColors,
+              hoverBackgroundColor: hasEvents ? ['#280875', '#d97706'] : ['#cbd5e1'],
               borderWidth: 2,
               borderColor: '#ffffff'
             }
@@ -468,8 +476,19 @@ export default function AnalyticsDashboard() {
       if (busiestDaysInstance.current) busiestDaysInstance.current.destroy();
 
       const dayLabels = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-      // Exact values matching Image 1: Wednesday = 1, Thursday = 3, others = 0
-      const dayValues = [0, 0, 0, 1, 3, 0, 0];
+      const dayValues = [0, 0, 0, 0, 0, 0, 0];
+      filteredEvents.forEach(e => {
+        const dStr = e.days?.[0]?.date;
+        if (dStr) {
+          const d = new Date(dStr);
+          const idx = d.getDay();
+          if (!isNaN(idx)) {
+            dayValues[idx] += 1;
+          }
+        }
+      });
+
+      const barColors = dayValues.map(v => v > 0 ? '#7c3aed' : '#d1d5db');
 
       busiestDaysInstance.current = new ChartJS(busiestDaysCanvasRef.current, {
         type: 'bar',
@@ -478,15 +497,7 @@ export default function AnalyticsDashboard() {
           datasets: [
             {
               data: dayValues,
-              backgroundColor: [
-                '#6b7280',
-                '#6b7280',
-                '#6b7280',
-                '#7c3aed', // Wednesday Purple
-                '#f59e0b', // Thursday Amber
-                '#6b7280',
-                '#6b7280'
-              ],
+              backgroundColor: barColors,
               borderRadius: 6,
               barThickness: 18
             }
@@ -518,12 +529,22 @@ export default function AnalyticsDashboard() {
       });
     }
 
-    // 4. Image 2: Events by Type Doughnut Chart (Workshop vs Mentoring Session)
+    // 4. Image 2: Events by Type Doughnut Chart (Dynamic Breakdown)
     if (eventsByTypeCanvasRef.current) {
       if (eventsByTypeInstance.current) eventsByTypeInstance.current.destroy();
 
-      const typeLabels = ['Workshop', 'Mentoring Session'];
-      const typeValues = [1, 3]; // 25% Workshop, 75% Mentoring
+      const typeCountsMap = {};
+      filteredEvents.forEach(e => {
+        const t = e.eventType || 'Other';
+        typeCountsMap[t] = (typeCountsMap[t] || 0) + 1;
+      });
+
+      const typeLabels = Object.keys(typeCountsMap).length > 0 ? Object.keys(typeCountsMap) : ['No Events'];
+      const typeValues = Object.keys(typeCountsMap).length > 0 ? Object.values(typeCountsMap) : [1];
+      const palette = ['#190059', '#7c3aed', '#f59e0b', '#10b981', '#3b82f6', '#ec4899', '#8b5cf6', '#6366f1'];
+      const typeColors = Object.keys(typeCountsMap).length > 0
+        ? typeLabels.map((_, i) => palette[i % palette.length])
+        : ['#e2e8f0'];
 
       eventsByTypeInstance.current = new ChartJS(eventsByTypeCanvasRef.current, {
         type: 'doughnut',
@@ -532,8 +553,8 @@ export default function AnalyticsDashboard() {
           datasets: [
             {
               data: typeValues,
-              backgroundColor: ['#190059', '#5b21b6'],
-              hoverBackgroundColor: ['#2e0c7a', '#4c1d95'],
+              backgroundColor: typeColors,
+              hoverBackgroundColor: typeColors,
               borderWidth: 2,
               borderColor: '#ffffff'
             }
@@ -637,25 +658,37 @@ export default function AnalyticsDashboard() {
     };
   }, [filteredEvents, filteredHistory, singleDayCount, multiDayCount]);
 
-  // Calendar Heatmap Days Generator for 2026
+  // Calendar Heatmap Days Generator for 2026 (computed dynamically from registered events)
   const heatmapDays = useMemo(() => {
+    const dateCounts = {};
+    filteredEvents.forEach(e => {
+      e.days?.forEach(d => {
+        if (d.date && d.date.startsWith('2026')) {
+          dateCounts[d.date] = (dateCounts[d.date] || 0) + 1;
+        }
+      });
+    });
+
     const weeks = [];
-    // 53 weeks x 7 days
+    const startDate = new Date('2026-01-01');
     for (let w = 0; w < 53; w++) {
       const week = [];
       for (let d = 0; d < 7; d++) {
-        // Highlight active event cells matching July (around week 26-28)
+        const cur = new Date(startDate);
+        cur.setDate(startDate.getDate() + (w * 7 + d));
+        const iso = cur.toISOString().split('T')[0];
+        const count = dateCounts[iso] || 0;
         let level = 0;
-        if (w === 27 && (d === 3 || d === 4)) level = 3; // July events
-        else if (w === 28 && d === 4) level = 4;
-        else if (w === 29 && d === 4) level = 4;
-        else if (w === 41 && d === 1) level = 2; // October event
-        week.push({ dayOfWeek: d, level });
+        if (count >= 4) level = 4;
+        else if (count === 3) level = 3;
+        else if (count === 2) level = 2;
+        else if (count >= 1) level = 1;
+        week.push({ dayOfWeek: d, level, date: iso, count });
       }
       weeks.push(week);
     }
     return weeks;
-  }, []);
+  }, [filteredEvents]);
 
   // Download PDF Report
   const handleDownloadReport = () => {

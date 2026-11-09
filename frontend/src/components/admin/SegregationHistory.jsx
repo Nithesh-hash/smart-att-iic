@@ -14,6 +14,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Trash2, RefreshCw } from 'lucide-react';
 import { getSegregationHistory, getSegregationHistorySync, subscribeToSegregationHistory, deleteSegregationHistory } from '../../services/dataService';
+import { getZipFromIndexedDB, generateFallbackZip } from '../../services/zipStorageService';
 
 // Format YYYY-MM-DD or comma-separated list of YYYY-MM-DD to DD-MM-YYYY
 function formatDateDDMMYYYY(dateStr) {
@@ -207,20 +208,62 @@ export default function SegregationHistory() {
     }
   };
 
-  const handleDownloadZip = (item) => {
-    // If there is cached blob or url
+  const handleDownloadZip = async (item) => {
+    const filename = item.zipName || 'all_schools.zip';
+
+    // 1. Check in-memory downloadUrl
     if (item.downloadUrl) {
+      try {
+        const res = await fetch(item.downloadUrl);
+        if (res.ok) {
+          const blob = await res.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+          return;
+        }
+      } catch (e) {
+        console.warn('downloadUrl expired, trying IndexedDB or generator:', e);
+      }
+    }
+
+    // 2. Check persistent IndexedDB cache
+    try {
+      const dbBlob = await getZipFromIndexedDB(item.id);
+      if (dbBlob) {
+        const url = window.URL.createObjectURL(dbBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+        return;
+      }
+    } catch (e) {
+      console.warn('IndexedDB lookup warning:', e);
+    }
+
+    // 3. Fallback: dynamically package a real ZIP archive with school workbooks
+    try {
+      const fallbackBlob = await generateFallbackZip(item);
+      const url = window.URL.createObjectURL(fallbackBlob);
       const a = document.createElement('a');
-      a.href = item.downloadUrl;
-      a.download = item.zipName || 'all_schools.zip';
+      a.href = url;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      return;
+      setTimeout(() => window.URL.revokeObjectURL(url), 2000);
+    } catch (genErr) {
+      console.error('Failed to generate fallback ZIP:', genErr);
     }
-
-    // Fallback: create mock or notify
-    alert(`Downloading archive: ${item.zipName || 'all_schools.zip'}`);
   };
 
   return (

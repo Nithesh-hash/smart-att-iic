@@ -330,10 +330,12 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
   summaryLines.push('--- SCHOOL-WISE ATTENDANCE BREAKDOWN ---');
   let rank = 1;
   const schoolCounts = [];
+  const schoolBreakdown = {};
   for (const [sch, blocks] of schoolsMap.entries()) {
     let count = 0;
     blocks.forEach(b => b.branches.forEach(br => count += br.students.length));
     schoolCounts.push({ school: sch, count });
+    schoolBreakdown[sch] = count;
   }
   schoolCounts.sort((a, b) => b.count - a.count);
 
@@ -368,6 +370,7 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
     summaryText: summaryContent,
     schoolFiles: generatedSchoolFiles,
     schoolsCount: schoolsMap.size,
+    schoolBreakdown,
     totalStudents: grandTotalStudents,
     totalFiles: totalFilesProcessed,
     eventsCount: eventSlots.length
