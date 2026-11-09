@@ -9,7 +9,7 @@
 
 import React, { useState } from 'react';
 
-export default function LoginModal({ onLoginSuccess }) {
+export default function LoginModal({ onLoginSuccess, onSwitchToStudent }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -111,6 +111,35 @@ export default function LoginModal({ onLoginSuccess }) {
               Sign In
             </button>
           </form>
+
+          {/* Student OD Portal Quick Access Pill */}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+              Are you a VIT student looking for your On Duty (OD) status?
+            </p>
+            <button
+              type="button"
+              onClick={onSwitchToStudent}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                color: '#1d4ed8',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>🎓</span>
+              <span>Go to Student OD Tracking Portal →</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>

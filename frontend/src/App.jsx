@@ -23,10 +23,23 @@ import EventRegistration from './components/EventRegistration';
 import MultiEventBatch from './components/MultiEventBatch';
 import QuickSegregation from './components/QuickSegregation';
 import AdminPanel from './components/admin/AdminPanel';
+import StudentPortal from './components/student/StudentPortal';
 
 const INACTIVITY_TIMEOUT_MS = 5 * 60 * 1000; // 5 minutes (300,000 ms)
 
 export default function App() {
+  // Portal Mode: Admin / Staff Portal vs Student OD Portal
+  const [isStudentPortal, setIsStudentPortal] = useState(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const path = window.location.pathname.toLowerCase();
+        if (path.includes('/student')) return true;
+        return sessionStorage.getItem('smart_att_portal_mode') === 'student';
+      }
+    } catch (e) {}
+    return false;
+  });
+
   // Authentication State
   const [currentUser, setCurrentUser] = useState(() => {
     try {
@@ -178,22 +191,48 @@ export default function App() {
 
   return (
     <div className="exact-portal-wrapper">
-      {/* 1. Login Screen (Image 1) */}
-      {!currentUser && (
-        <LoginModal onLoginSuccess={handleLoginSuccess} />
-      )}
+      {/* 0. Student OD Tracking Portal (Separate, Independent Module) */}
+      {isStudentPortal ? (
+        <StudentPortal
+          onSwitchToAdmin={() => {
+            setIsStudentPortal(false);
+            sessionStorage.setItem('smart_att_portal_mode', 'admin');
+            try {
+              window.history.pushState({}, '', '/');
+            } catch (e) {}
+          }}
+        />
+      ) : (
+        <>
+          {/* 1. Login Screen (Image 1) */}
+          {!currentUser && (
+            <LoginModal
+              onLoginSuccess={handleLoginSuccess}
+              onSwitchToStudent={() => {
+                setIsStudentPortal(true);
+                sessionStorage.setItem('smart_att_portal_mode', 'student');
+                try {
+                  window.history.pushState({}, '', '/student');
+                } catch (e) {}
+              }}
+            />
+          )}
 
-      {/* 2. Authenticated Portal View */}
-      {currentUser && (
-        <div className="portal-page-container">
-          {/* Official Institutional Header */}
-          <Header
-            currentUser={currentUser}
-            onOpenRules={() => setIsRulesOpen(true)}
-            onOpenCloudSettings={() => setIsCloudSettingsOpen(true)}
-            onSelectTab={(tab) => setActiveTab(tab)}
-            onLogout={handleLogout}
-          />
+          {/* 2. Authenticated Portal View */}
+          {currentUser && (
+            <div className="portal-page-container">
+              {/* Official Institutional Header */}
+              <Header
+                currentUser={currentUser}
+                onOpenRules={() => setIsRulesOpen(true)}
+                onOpenCloudSettings={() => setIsCloudSettingsOpen(true)}
+                onSelectTab={(tab) => setActiveTab(tab)}
+                onLogout={handleLogout}
+                onOpenStudentPortal={() => {
+                  setIsStudentPortal(true);
+                  sessionStorage.setItem('smart_att_portal_mode', 'student');
+                }}
+              />
 
           {/* Centered Deep Purple Navigation Bar */}
           <Navigation
@@ -238,9 +277,11 @@ export default function App() {
           )}
         </div>
       )}
+    </>
+  )}
 
-      {/* Floating Developer Badge at Bottom-Left */}
-      <DeveloperBadge />
-    </div>
-  );
+  {/* Floating Developer Badge at Bottom-Left */}
+  <DeveloperBadge />
+</div>
+);
 }

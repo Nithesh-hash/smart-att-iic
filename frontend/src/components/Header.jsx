@@ -18,7 +18,8 @@ import { Download } from 'lucide-react';
 
 export default function Header({
   currentUser,
-  onLogout
+  onLogout,
+  onOpenStudentPortal
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -88,6 +89,37 @@ export default function Header({
                   <span>Install as WebApp</span>
                 </button>
               </div>
+
+              {/* Quick Switch to Student OD Portal */}
+              {onOpenStudentPortal && (
+                <div style={{ padding: '0 16px', marginBottom: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      onOpenStudentPortal();
+                    }}
+                    style={{
+                      width: '100%',
+                      padding: '8px 12px',
+                      backgroundColor: '#eff6ff',
+                      color: '#1d4ed8',
+                      border: '1px solid #bfdbfe',
+                      borderRadius: '6px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🎓</span>
+                    <span>View Student OD Portal</span>
+                  </button>
+                </div>
+              )}
 
               <div className="profile-dropdown-action">
                 <button

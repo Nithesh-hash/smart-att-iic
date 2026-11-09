@@ -19,6 +19,7 @@ import React, { useState, useEffect } from 'react';
 import jsPDF from 'jspdf';
 import { getEvents, getEventsSync, addSegregationHistory, getSchoolMappings } from '../services/dataService';
 import { processMultiEventBatch } from '../services/batchProcessor';
+import { autoExtractAndStoreODRecords } from '../services/odExtractionEngine';
 
 export default function MultiEventBatch() {
   // Step 1: Date Range Filter (Starts empty so browser shows placeholder dd-mm-yyyy)
@@ -212,7 +213,7 @@ export default function MultiEventBatch() {
 
         const zipBlobUrl = result?.blob ? window.URL.createObjectURL(result.blob) : null;
 
-        await addSegregationHistory({
+        const segregationRecord = await addSegregationHistory({
           eventDates: compiledSlots.map(s => s.event?.days?.[0]?.date).filter(Boolean).join(', ') || result.dateTag || new Date().toISOString().split('T')[0],
           eventsSegregated: eventsNamesList || '• Attendance Segregation',
           coordinatorFormatted,
@@ -225,6 +226,20 @@ export default function MultiEventBatch() {
           timestamp: new Date().toISOString()
         });
         console.log('✅ Segregation audit record successfully saved to history!');
+
+        // ⚡ Automatic Background OD Extraction Engine (Zero Admin Friction)
+        autoExtractAndStoreODRecords({
+          zipBlob: result?.blob,
+          compiledSlots,
+          segregationId: segregationRecord?.id || `seg_${Date.now()}`,
+          zipName: result.zipName
+        }).then(res => {
+          if (res?.success) {
+            console.log(`🎓 Automatically extracted and mapped ${res.totalODRecordsCreated} student OD records.`);
+          }
+        }).catch(err => {
+          console.warn('Background OD extraction warning (non-blocking):', err);
+        });
       } catch (histErr) {
         console.error('Failed to record segregation history:', histErr);
       }

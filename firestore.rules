@@ -1,9 +1,38 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Existing institutional collections (Preserved without interruption)
+    match /events/{eventId} {
+      allow read, write: if true;
+    }
+    match /segregation_history/{historyId} {
+      allow read, write: if true;
+    }
+    match /config/{configId} {
+      allow read, write: if true;
+    }
+
+    // Smart Attendance Segregator 2.0 - Student OD Tracking Portal Collections
+    match /students/{studentId} {
+      // Student registration, profile lookup, and admin approval management
+      allow read, write: if true;
+    }
+    match /unique_reg_numbers/{regNo} {
+      // Uniqueness lock for registration numbers
+      allow read, write: if true;
+    }
+    match /student_od_records/{recordId} {
+      // Automatic background OD extraction engine and student OD tracking
+      allow read, write: if true;
+    }
+    match /od_extraction_logs/{logId} {
+      // Extraction audit trail logs
+      allow read, write: if true;
+    }
+
+    // Fallback for system collections
     match /{document=**} {
       allow read, write: if true;
     }
   }
 }
-

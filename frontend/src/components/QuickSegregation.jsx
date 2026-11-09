@@ -31,6 +31,7 @@ import {
   segregateAttendance
 } from '../services/attendanceProcessor';
 import { addSegregationHistory } from '../services/dataService';
+import { autoExtractAndStoreODRecords } from '../services/odExtractionEngine';
 
 const STORAGE_KEY = 'vit_attendance_custom_schools_mapping';
 
@@ -411,7 +412,7 @@ export default function QuickSegregation() {
 
           const zipBlobUrl = result?.blob ? window.URL.createObjectURL(result.blob) : null;
 
-          await addSegregationHistory({
+          const histRecord = await addSegregationHistory({
             eventDates: eventDateVal,
             eventsSegregated: eventsListFormatted,
             coordinatorFormatted: 'Faculty Admin (VIT-IST)',
@@ -425,6 +426,23 @@ export default function QuickSegregation() {
             downloadUrl: zipBlobUrl,
             timestamp: new Date().toISOString()
           });
+
+          // ⚡ Automatic Background OD Extraction Engine
+          const quickCompiledSlots = (previewData?.events || [{
+            id: `quick_ev_${Date.now()}`,
+            eventName: 'Quick Attendance Segregation',
+            date: eventDateVal,
+            startTime: '9:00 AM',
+            endTime: '5:00 PM',
+            venue: 'VIT Campus'
+          }]).map(ev => ({ event: ev, dayUploads: { 1: files } }));
+
+          autoExtractAndStoreODRecords({
+            zipBlob: result?.blob,
+            compiledSlots: quickCompiledSlots,
+            segregationId: histRecord?.id || `seg_${Date.now()}`,
+            zipName: result.filename || result.zipName
+          }).catch(err => console.warn('Background OD extraction error:', err));
         } catch (histErr) {
           console.warn('Could not record segregation run in history:', histErr);
         }

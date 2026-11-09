@@ -11,11 +11,13 @@ import React, { useState, useEffect } from 'react';
 import EventsManagement from './EventsManagement';
 import SegregationHistory from './SegregationHistory';
 import AnalyticsDashboard from './AnalyticsDashboard';
+import StudentManagement from './StudentManagement';
 
 const ADMIN_SUBTABS = {
   EVENTS: 'events',
   HISTORY: 'history',
-  ANALYTICS: 'analytics'
+  ANALYTICS: 'analytics',
+  STUDENTS: 'students'
 };
 
 export default function AdminPanel() {
@@ -73,6 +75,15 @@ export default function AdminPanel() {
             <span className="subtab-icon-emoji">📊</span>
             <span>Analytics</span>
           </button>
+
+          <button
+            type="button"
+            className={`exact-admin-subtab-btn ${activeSubTab === ADMIN_SUBTABS.STUDENTS ? 'subtab-active' : ''}`}
+            onClick={() => setActiveSubTab(ADMIN_SUBTABS.STUDENTS)}
+          >
+            <span className="subtab-icon-emoji">🎓</span>
+            <span>Student Management</span>
+          </button>
         </div>
         <div className="exact-admin-tabs-line" />
       </div>
@@ -82,6 +93,7 @@ export default function AdminPanel() {
         {activeSubTab === ADMIN_SUBTABS.EVENTS && <EventsManagement />}
         {activeSubTab === ADMIN_SUBTABS.HISTORY && <SegregationHistory />}
         {activeSubTab === ADMIN_SUBTABS.ANALYTICS && <AnalyticsDashboard />}
+        {activeSubTab === ADMIN_SUBTABS.STUDENTS && <StudentManagement />}
       </div>
     </div>
   );
