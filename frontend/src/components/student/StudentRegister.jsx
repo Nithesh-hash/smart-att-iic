@@ -98,10 +98,14 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
     } catch (err) {
       console.error('Registration error:', err);
       let msg = err.message || 'Registration failed.';
-      if (err.code === 'auth/email-already-in-use') {
+      if (err.code === 'auth/configuration-not-found' || err.message?.includes('configuration-not-found')) {
+        msg = 'Firebase Authentication is not activated yet for this project. Please go to Firebase Console -> Build -> Authentication -> click "Get Started" and enable "Email/Password" under the Sign-in method tab.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        msg = 'Email/Password sign-in is disabled in Firebase Console. Please go to Authentication -> Sign-in method and enable Email/Password.';
+      } else if (err.code === 'auth/email-already-in-use') {
         msg = 'An account with this VIT student email already exists. Please sign in instead.';
       } else if (err.code === 'auth/weak-password') {
-        msg = 'Password is too weak. Please use a stronger password with letters and numbers.';
+        msg = 'Password is too weak. Please use a stronger password with at least 6 characters.';
       }
       setErrorMessage(msg);
     } finally {
@@ -361,3 +365,4 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
     </div>
   );
 }
+

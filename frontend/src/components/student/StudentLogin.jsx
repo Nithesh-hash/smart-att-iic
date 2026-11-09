@@ -38,7 +38,11 @@ export default function StudentLogin({ onLoginSuccess, onSwitchToRegister, onSwi
     } catch (err) {
       console.error('Student login error:', err);
       let userFriendlyMsg = err.message || 'Login failed. Please check your credentials.';
-      if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      if (err.code === 'auth/configuration-not-found' || err.message?.includes('configuration-not-found')) {
+        userFriendlyMsg = 'Firebase Authentication is not activated yet for this project. Please go to Firebase Console -> Build -> Authentication -> click "Get Started" and enable "Email/Password" under the Sign-in method tab.';
+      } else if (err.code === 'auth/operation-not-allowed') {
+        userFriendlyMsg = 'Email/Password sign-in is disabled in Firebase Console. Please go to Authentication -> Sign-in method and enable Email/Password.';
+      } else if (err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
         userFriendlyMsg = 'Invalid VIT student email or password. Please verify and try again.';
       } else if (err.code === 'auth/too-many-requests') {
         userFriendlyMsg = 'Too many failed login attempts. Please reset your password or try again later.';
@@ -227,3 +231,4 @@ export default function StudentLogin({ onLoginSuccess, onSwitchToRegister, onSwi
     </div>
   );
 }
+

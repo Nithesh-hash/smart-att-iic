@@ -324,3 +324,4 @@ export function generateStudentODPdf(studentProfile, records = [], stats = {}) {
   const filename = `OD_Statement_${studentProfile?.registrationNumber || 'Student'}_${new Date().toISOString().split('T')[0]}.pdf`;
   doc.save(filename);
 }
+
