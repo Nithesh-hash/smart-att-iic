@@ -385,6 +385,7 @@ export default function MultiEventBatch() {
                 } catch (e) {}
                 window.dispatchEvent(new CustomEvent('smart_att_navigate', { detail: 'admin' }));
                 window.dispatchEvent(new CustomEvent('smart_att_admin_subtab', { detail: 'history' }));
+                window.dispatchEvent(new CustomEvent('smart_att_history_changed'));
               }}
               style={{ background: '#190059', color: '#fff', border: 'none', padding: '8px 16px', borderRadius: '6px', fontSize: '13px', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
             >

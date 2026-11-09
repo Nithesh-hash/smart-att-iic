@@ -12,8 +12,8 @@
  */
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Trash2 } from 'lucide-react';
-import { getSegregationHistory, getSegregationHistorySync, deleteSegregationHistory } from '../../services/dataService';
+import { Trash2, RefreshCw } from 'lucide-react';
+import { getSegregationHistory, getSegregationHistorySync, subscribeToSegregationHistory, deleteSegregationHistory } from '../../services/dataService';
 
 // Format YYYY-MM-DD or comma-separated list of YYYY-MM-DD to DD-MM-YYYY
 function formatDateDDMMYYYY(dateStr) {
@@ -69,6 +69,7 @@ export default function SegregationHistory() {
   const [deleteCandidate, setDeleteCandidate] = useState(null);
 
   const loadHistory = async () => {
+    setIsLoading(true);
     try {
       const list = await getSegregationHistory();
       setHistoryList(list);
@@ -79,17 +80,19 @@ export default function SegregationHistory() {
     }
   };
 
-  useEffect(() => {
+  const handleRefresh = () => {
     loadHistory();
-    const handleHistoryChanged = () => {
-      setHistoryList(getSegregationHistorySync());
-      loadHistory();
-    };
-    window.addEventListener('smart_att_history_changed', handleHistoryChanged);
-    window.addEventListener('storage', handleHistoryChanged);
+  };
+
+  useEffect(() => {
+    setIsLoading(true);
+    const unsubscribe = subscribeToSegregationHistory((list) => {
+      setHistoryList(list);
+      setIsLoading(false);
+    });
+
     return () => {
-      window.removeEventListener('smart_att_history_changed', handleHistoryChanged);
-      window.removeEventListener('storage', handleHistoryChanged);
+      if (unsubscribe) unsubscribe();
     };
   }, []);
 
@@ -259,6 +262,18 @@ export default function SegregationHistory() {
           <option value="newest">Newest First</option>
           <option value="oldest">Oldest First</option>
         </select>
+
+        {/* Refresh button */}
+        <button
+          type="button"
+          className="exact-btn-clear"
+          onClick={handleRefresh}
+          title="Reload latest records from Cloud Firestore"
+          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+        >
+          <RefreshCw size={13} className={isLoading ? 'spinning-icon' : ''} />
+          <span>{isLoading ? 'Syncing...' : 'Refresh'}</span>
+        </button>
 
         {/* Clear button */}
         <button

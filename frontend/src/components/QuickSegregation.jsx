@@ -30,7 +30,7 @@ import {
   generateSegregatedZipClient,
   segregateAttendance
 } from '../services/attendanceProcessor';
-import { addSegregationHistory } from '../services/dataService';
+import { addSegregationHistory, updateSegregationHistory } from '../services/dataService';
 import { autoExtractAndStoreODRecords } from '../services/odExtractionEngine';
 
 const STORAGE_KEY = 'vit_attendance_custom_schools_mapping';
@@ -45,6 +45,7 @@ export default function QuickSegregation() {
   const [eventEdits, setEventEdits] = useState({});
   const [errorMessage, setErrorMessage] = useState(null);
   const [downloadSuccess, setDownloadSuccess] = useState(null);
+  const [activeHistoryId, setActiveHistoryId] = useState(null);
 
   // Custom School Branch Mapping Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -321,6 +322,50 @@ export default function QuickSegregation() {
         };
       });
       setEventEdits(initialEdits);
+
+      // ⚡ IMMEDIATE AUDIT TRAIL: Immediately record segregation in history & sync OD records
+      try {
+        const eventsListFormatted = clientData.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.eventDate || e.date || 'Today'} (${e.eventTime || e.startTime || '9:00 AM - 5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
+        const eventDateVal = clientData.events?.[0]?.eventDate || clientData.events?.[0]?.date || clientData.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
+
+        const histRecord = await addSegregationHistory({
+          eventDates: eventDateVal,
+          eventsSegregated: eventsListFormatted,
+          coordinatorFormatted: 'Faculty Admin (VIT-IST)',
+          count: clientData.events?.length || 1,
+          dateRange: `${clientData.dateRange?.firstDateStr || 'N/A'} - ${clientData.dateRange?.lastDateStr || 'N/A'}`,
+          eventsProcessed: clientData.events?.length || 1,
+          totalStudents: clientData.totalStudentsProcessed || 0,
+          schoolsRepresented: clientData.schoolSummary?.length || 0,
+          filesCount: filesToAnalyze.length,
+          zipName: clientData.suggestedZipName || `all_schools_${eventDateVal}.zip`,
+          downloadUrl: null,
+          timestamp: new Date().toISOString()
+        });
+
+        if (histRecord?.id) {
+          setActiveHistoryId(histRecord.id);
+        }
+
+        // Automatic Background OD Extraction Engine for Student Portal
+        const quickCompiledSlots = (clientData.events || [{
+          id: `quick_ev_${Date.now()}`,
+          eventName: 'Quick Attendance Segregation',
+          date: eventDateVal,
+          startTime: '9:00 AM',
+          endTime: '5:00 PM',
+          venue: 'VIT Campus'
+        }]).map(ev => ({ event: ev, dayUploads: { 1: filesToAnalyze } }));
+
+        autoExtractAndStoreODRecords({
+          files: filesToAnalyze,
+          compiledSlots: quickCompiledSlots,
+          segregationId: histRecord?.id || `seg_${Date.now()}`,
+          zipName: clientData.suggestedZipName
+        }).catch(err => console.warn('Background OD extraction error:', err));
+      } catch (histErr) {
+        console.warn('Could not record segregation run in history:', histErr);
+      }
     } catch (clientErr) {
       console.warn('In-browser analysis error, attempting API fallback:', clientErr);
       try {
@@ -368,6 +413,50 @@ export default function QuickSegregation() {
           };
         });
         setEventEdits(initialEdits);
+
+      // ⚡ IMMEDIATE AUDIT TRAIL: Immediately record segregation in history & sync OD records
+      try {
+        const eventsListFormatted = clientData.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.eventDate || e.date || 'Today'} (${e.eventTime || e.startTime || '9:00 AM - 5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
+        const eventDateVal = clientData.events?.[0]?.eventDate || clientData.events?.[0]?.date || clientData.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
+
+        const histRecord = await addSegregationHistory({
+          eventDates: eventDateVal,
+          eventsSegregated: eventsListFormatted,
+          coordinatorFormatted: 'Faculty Admin (VIT-IST)',
+          count: clientData.events?.length || 1,
+          dateRange: `${clientData.dateRange?.firstDateStr || 'N/A'} - ${clientData.dateRange?.lastDateStr || 'N/A'}`,
+          eventsProcessed: clientData.events?.length || 1,
+          totalStudents: clientData.totalStudentsProcessed || 0,
+          schoolsRepresented: clientData.schoolSummary?.length || 0,
+          filesCount: filesToAnalyze.length,
+          zipName: clientData.suggestedZipName || `all_schools_${eventDateVal}.zip`,
+          downloadUrl: null,
+          timestamp: new Date().toISOString()
+        });
+
+        if (histRecord?.id) {
+          setActiveHistoryId(histRecord.id);
+        }
+
+        // Automatic Background OD Extraction Engine for Student Portal
+        const quickCompiledSlots = (clientData.events || [{
+          id: `quick_ev_${Date.now()}`,
+          eventName: 'Quick Attendance Segregation',
+          date: eventDateVal,
+          startTime: '9:00 AM',
+          endTime: '5:00 PM',
+          venue: 'VIT Campus'
+        }]).map(ev => ({ event: ev, dayUploads: { 1: filesToAnalyze } }));
+
+        autoExtractAndStoreODRecords({
+          files: filesToAnalyze,
+          compiledSlots: quickCompiledSlots,
+          segregationId: histRecord?.id || `seg_${Date.now()}`,
+          zipName: clientData.suggestedZipName
+        }).catch(err => console.warn('Background OD extraction error:', err));
+      } catch (histErr) {
+        console.warn('Could not record segregation run in history:', histErr);
+      }
       } catch (err) {
         console.error('Preview analysis failed:', err);
         setErrorMessage(err.message || 'Failed to analyze attendance files.');
@@ -405,27 +494,37 @@ export default function QuickSegregation() {
           totalStudents: result.totalStudents
         });
 
-        // Audit Trail: Record in History
+        // Audit Trail: Record in History or Update existing active record
         try {
           const eventsListFormatted = previewData?.events?.map(e => `• ${e.eventName} | ${e.venue || 'Campus'} | ${e.date || 'Today'} (${e.startTime || '9:00 AM'} - ${e.endTime || '5:00 PM'})`).join('\n') || '• Quick Attendance Segregation';
           const eventDateVal = previewData?.events?.[0]?.date || previewData?.dateRange?.firstDateStr || new Date().toISOString().split('T')[0];
 
           const zipBlobUrl = result?.blob ? window.URL.createObjectURL(result.blob) : null;
 
-          const histRecord = await addSegregationHistory({
-            eventDates: eventDateVal,
-            eventsSegregated: eventsListFormatted,
-            coordinatorFormatted: 'Faculty Admin (VIT-IST)',
-            count: previewData?.events?.length || 1,
-            dateRange: `${previewData?.dateRange?.firstDateStr || 'N/A'} - ${previewData?.dateRange?.lastDateStr || 'N/A'}`,
-            eventsProcessed: previewData?.events?.length || 1,
-            totalStudents: result.totalStudents || 0,
-            schoolsRepresented: result.schoolsCount || 0,
-            filesCount: files.length,
-            zipName: result.filename || result.zipName || 'all_schools.zip',
-            downloadUrl: zipBlobUrl,
-            timestamp: new Date().toISOString()
-          });
+          if (activeHistoryId) {
+            await updateSegregationHistory(activeHistoryId, {
+              zipName: result.filename || result.zipName || 'all_schools.zip',
+              downloadUrl: zipBlobUrl,
+              totalStudents: result.totalStudents || 0,
+              schoolsRepresented: result.schoolsCount || 0
+            });
+          } else {
+            const histRecord = await addSegregationHistory({
+              eventDates: eventDateVal,
+              eventsSegregated: eventsListFormatted,
+              coordinatorFormatted: 'Faculty Admin (VIT-IST)',
+              count: previewData?.events?.length || 1,
+              dateRange: `${previewData?.dateRange?.firstDateStr || 'N/A'} - ${previewData?.dateRange?.lastDateStr || 'N/A'}`,
+              eventsProcessed: previewData?.events?.length || 1,
+              totalStudents: result.totalStudents || 0,
+              schoolsRepresented: result.schoolsCount || 0,
+              filesCount: files.length,
+              zipName: result.filename || result.zipName || 'all_schools.zip',
+              downloadUrl: zipBlobUrl,
+              timestamp: new Date().toISOString()
+            });
+            if (histRecord?.id) setActiveHistoryId(histRecord.id);
+          }
 
           // ⚡ Automatic Background OD Extraction Engine
           const quickCompiledSlots = (previewData?.events || [{
@@ -440,7 +539,7 @@ export default function QuickSegregation() {
           autoExtractAndStoreODRecords({
             zipBlob: result?.blob,
             compiledSlots: quickCompiledSlots,
-            segregationId: histRecord?.id || `seg_${Date.now()}`,
+            segregationId: activeHistoryId || `seg_${Date.now()}`,
             zipName: result.filename || result.zipName
           }).catch(err => console.warn('Background OD extraction error:', err));
         } catch (histErr) {

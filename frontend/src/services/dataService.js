@@ -11,7 +11,8 @@ import {
   getDocs,
   setDoc,
   deleteDoc,
-  doc
+  doc,
+  onSnapshot
 } from 'firebase/firestore';
 import { getDb } from '../firebase/firebaseConfig';
 import defaultSchoolsConfig from '../config/schools.json';
@@ -112,7 +113,7 @@ export function sanitizeForFirestore(obj) {
 /**
  * Helper: Run promise with a timeout so Firestore never hangs the UI
  */
-function withTimeout(promise, ms = 4000) {
+function withTimeout(promise, ms = 12000) {
   return Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error('Firestore timeout')), ms))
@@ -280,7 +281,7 @@ export async function getSegregationHistory() {
   const db = getDb();
   if (db) {
     try {
-      const snap = await withTimeout(getDocs(collection(db, 'segregation_history')), 4000);
+      const snap = await withTimeout(getDocs(collection(db, 'segregation_history')), 12000);
       if (!snap.empty) {
         const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
 
@@ -328,8 +329,122 @@ export async function getSegregationHistory() {
   return localList;
 }
 
+/**
+ * Real-time subscriber for Segregation History (Firestore onSnapshot + window events)
+ */
+export function subscribeToSegregationHistory(callback) {
+  // 1. Immediately emit current local cache
+  const initial = getSegregationHistorySync();
+  if (callback && typeof callback === 'function') {
+    callback(initial);
+  }
+
+  let unsubFirestore = null;
+  const db = getDb();
+  if (db) {
+    try {
+      unsubFirestore = onSnapshot(collection(db, 'segregation_history'), (snap) => {
+        const remoteList = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        const cleanRemote = remoteList.filter(h => !isDemoHistory(h));
+
+        const local = getSegregationHistorySync();
+        const localMap = new Map(local.map(h => [h.id, h]));
+        const remoteIds = new Set(cleanRemote.map(h => h.id));
+
+        const enrichedRemote = cleanRemote.map(r => {
+          const localItem = localMap.get(r.id);
+          return {
+            ...r,
+            downloadUrl: localItem?.downloadUrl || r.downloadUrl || null
+          };
+        });
+
+        const unsyncedLocal = local.filter(l => !remoteIds.has(l.id));
+        const merged = [...unsyncedLocal, ...enrichedRemote];
+        merged.sort((a, b) => new Date(b.timestamp || b.createdAt || 0) - new Date(a.timestamp || a.createdAt || 0));
+
+        try {
+          localStorage.setItem(HISTORY_KEY, JSON.stringify(merged));
+        } catch (e) {}
+
+        if (callback && typeof callback === 'function') {
+          callback(merged);
+        }
+      }, (err) => {
+        console.warn('Firestore segregation_history onSnapshot listener warning:', err);
+      });
+    } catch (err) {
+      console.warn('Failed to attach onSnapshot to segregation_history:', err);
+    }
+  }
+
+  const handleLocalChange = () => {
+    const list = getSegregationHistorySync();
+    if (callback && typeof callback === 'function') {
+      callback(list);
+    }
+  };
+
+  if (typeof window !== 'undefined') {
+    window.addEventListener('smart_att_history_changed', handleLocalChange);
+    window.addEventListener('storage', handleLocalChange);
+  }
+
+  return () => {
+    if (unsubFirestore) {
+      try { unsubFirestore(); } catch (e) {}
+    }
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('smart_att_history_changed', handleLocalChange);
+      window.removeEventListener('storage', handleLocalChange);
+    }
+  };
+}
+
+export async function updateSegregationHistory(historyId, updates) {
+  if (!historyId) return null;
+
+  const current = getSegregationHistorySync();
+  const index = current.findIndex(h => h.id === historyId);
+
+  let updatedItem = null;
+  if (index !== -1) {
+    updatedItem = {
+      ...current[index],
+      ...updates
+    };
+    const updated = [...current];
+    updated[index] = updatedItem;
+    try {
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
+    } catch (e) {}
+  }
+
+  // Dispatch global event for instant UI reflection
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: updatedItem || { id: historyId, ...updates } }));
+    try { window.dispatchEvent(new Event('storage')); } catch (e) {}
+  }
+
+  const db = getDb();
+  if (db) {
+    try {
+      const { blob, downloadUrl, ...firestoreData } = updates;
+      const sanitized = sanitizeForFirestore(firestoreData);
+      if (sanitized && Object.keys(sanitized).length > 0) {
+        await setDoc(doc(db, 'segregation_history', historyId), sanitized, { merge: true });
+        console.log('✅ Segregation History updated in Firestore:', historyId);
+      }
+    } catch (err) {
+      console.warn('Failed to update segregation history in Firestore:', err);
+    }
+  }
+
+  return updatedItem;
+}
+
 export async function addSegregationHistory(historyRecord) {
-  const id = `hist_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const id = historyRecord.id || `hist_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
   const now = new Date();
   const day = String(now.getDate()).padStart(2, '0');
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -367,6 +482,14 @@ export async function addSegregationHistory(historyRecord) {
     console.warn('LocalStorage write error:', e);
   }
 
+  // ⚡ INSTANT DISPATCH: Fire local UI updates with 0 latency
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: itemToStoreLocally }));
+    try {
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {}
+  }
+
   // Direct Firestore persistence
   const db = getDb();
   if (db) {
@@ -379,12 +502,9 @@ export async function addSegregationHistory(historyRecord) {
     }
   }
 
-  // Dispatch global events for instant UI reflection across tabs & components
+  // Fire second dispatch after cloud write completes
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new CustomEvent('smart_att_history_changed', { detail: itemToStoreLocally }));
-    try {
-      window.dispatchEvent(new Event('storage'));
-    } catch (e) {}
   }
 
   return itemToStoreLocally;
