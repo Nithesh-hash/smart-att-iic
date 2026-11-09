@@ -1,27 +1,14 @@
 /**
  * Student Registration Component
- * Enforces:
- * 1. Full Name
- * 2. VIT Registration Number (9-character format, strictly unique)
- * 3. VIT Student Email (@vitstudent.ac.in)
- * 4. Password & Confirm Password
- * 5. Sends Firebase Email Verification
- * 6. Sets initial status to "pending"
+ * Matches the official VIT-IST Institutional Design:
+ * - Exact header banner with official VIT & IIC logos
+ * - Exact centered white login card (.exact-login-card inside .login-card-body-wrapper)
+ * - Exact form inputs (.exact-form-input)
+ * - Exact deep-purple button (.exact-btn-signin)
+ * - Enforces VIT email (@vitstudent.ac.in) and 9-character Reg No format
  */
 
 import React, { useState } from 'react';
-import {
-  User,
-  Hash,
-  Mail,
-  Lock,
-  UserPlus,
-  ArrowLeft,
-  AlertCircle,
-  CheckCircle2,
-  RefreshCw,
-  ShieldCheck
-} from 'lucide-react';
 import {
   registerStudent,
   isValidVitRegNo,
@@ -56,19 +43,19 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
     const cleanRegNo = normalizeRegNo(regNo);
     const cleanEmail = email.trim().toLowerCase();
 
-    // 1. Validations
+    // Validations
     if (!cleanName) {
-      setErrorMessage('Please enter your full name as registered with VIT.');
+      setErrorMessage('Please enter your full name as per VIT records.');
       return;
     }
 
     if (!isValidVitRegNo(cleanRegNo)) {
-      setErrorMessage('Invalid Registration Number. Must be a 9-character VIT registration code (e.g. 22MIS0001, 21BCE1234).');
+      setErrorMessage('Invalid Registration Number. Must be a 9-character VIT registration code (e.g. 24MIS0319, 21BCE1234).');
       return;
     }
 
     if (!isValidVitStudentEmail(cleanEmail)) {
-      setErrorMessage('Registration is strictly restricted to official VIT student email addresses ending with @vitstudent.ac.in.');
+      setErrorMessage('Registration is strictly restricted to official VIT student email addresses (@vitstudent.ac.in). External emails are rejected.');
       return;
     }
 
@@ -116,56 +103,58 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
   if (successInfo) {
     return (
       <div className="login-page-screen">
+        {/* Top Institutional Header Banner (Image 3) */}
         <div className="login-header-banner">
           <div className="logos-row-center">
             <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
             <img src="/iic-logo.png" alt="IIC Logo" className="official-iic-logo" />
           </div>
-          <p className="inst-office-text">Office of Innovation, Startup and Technology Transfer (VIT-IST)</p>
-          <h1 className="inst-app-title">STUDENT ON DUTY (OD) TRACKING PORTAL</h1>
+          <p className="inst-office-text">
+            Office of Innovation, Startup and Technology Transfer (VIT-IST)
+          </p>
+          <h1 className="inst-main-title">
+            SMART ATTENDANCE SEGREGATOR
+          </h1>
         </div>
 
-        <div className="exact-login-card" style={{ maxWidth: '480px', textAlign: 'center' }}>
-          <div style={{ width: '56px', height: '56px', borderRadius: '50%', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px' }}>
-            <CheckCircle2 size={34} />
-          </div>
+        {/* Centered Success Card Body */}
+        <div className="login-card-body-wrapper">
+          <div className="exact-login-card" style={{ width: '420px', maxWidth: '92vw', textAlign: 'center' }}>
+            <div style={{ fontSize: '38px', marginBottom: '8px' }}>✅</div>
+            <h2 className="login-card-title" style={{ color: '#166534', marginBottom: '14px' }}>
+              Registration Submitted!
+            </h2>
 
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#166534', marginBottom: '8px' }}>
-            Registration Submitted Successfully!
-          </h2>
-
-          <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', textAlign: 'left', marginBottom: '18px' }}>
-            <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
-              <strong>Student Name:</strong> {successInfo.name}
+            <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', textAlign: 'left', marginBottom: '16px' }}>
+              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
+                <strong>Name:</strong> {successInfo.name}
+              </div>
+              <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
+                <strong>Registration No:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#1d4ed8' }}>{successInfo.registrationNumber}</span>
+              </div>
+              <div style={{ fontSize: '13px', color: '#475569' }}>
+                <strong>VIT Email:</strong> {successInfo.email}
+              </div>
             </div>
-            <div style={{ fontSize: '13px', color: '#475569', marginBottom: '6px' }}>
-              <strong>Registration No:</strong> <span style={{ fontFamily: 'monospace', fontWeight: 'bold', color: '#1d4ed8' }}>{successInfo.registrationNumber}</span>
-            </div>
-            <div style={{ fontSize: '13px', color: '#475569' }}>
-              <strong>VIT Email:</strong> {successInfo.email}
-            </div>
-          </div>
 
-          <div className="exact-alert-box exact-alert-warning" style={{ textAlign: 'left', marginBottom: '20px', fontSize: '13px' }}>
-            <div style={{ fontWeight: '600', marginBottom: '4px' }}>Two Important Next Steps:</div>
-            <ol style={{ paddingLeft: '18px', margin: 0 }}>
-              <li style={{ marginBottom: '4px' }}>
-                <strong>Verify your Email:</strong> A verification link has been sent to <code>{successInfo.email}</code>. Please check your inbox.
-              </li>
-              <li>
-                <strong>Admin Approval:</strong> Your account is currently awaiting administrative approval by VIT-IST coordinators.
-              </li>
-            </ol>
-          </div>
+            <div style={{ backgroundColor: '#fffbeb', border: '1px solid #fde68a', borderRadius: '8px', padding: '12px', textAlign: 'left', marginBottom: '18px', fontSize: '12.5px', color: '#92400e', lineHeight: '1.5' }}>
+              <strong>Next Steps:</strong>
+              <div style={{ marginTop: '4px' }}>
+                1. Please check your VIT student inbox to verify your email.
+              </div>
+              <div>
+                2. Your account is currently awaiting admin approval by coordinators.
+              </div>
+            </div>
 
-          <button
-            type="button"
-            className="exact-login-submit-btn"
-            onClick={onSwitchToLogin}
-            style={{ width: '100%', padding: '12px', fontSize: '14px' }}
-          >
-            Proceed to Student Login
-          </button>
+            <button
+              type="button"
+              className="exact-btn-signin"
+              onClick={onSwitchToLogin}
+            >
+              Proceed to Student Sign In
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -173,7 +162,7 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
 
   return (
     <div className="login-page-screen">
-      {/* Top Header Banner */}
+      {/* Top Institutional Header Banner (Image 3) */}
       <div className="login-header-banner">
         <div className="logos-row-center">
           <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
@@ -182,187 +171,148 @@ export default function StudentRegister({ onRegisterSuccess, onSwitchToLogin, on
         <p className="inst-office-text">
           Office of Innovation, Startup and Technology Transfer (VIT-IST)
         </p>
-        <h1 className="inst-app-title">
-          STUDENT ON DUTY (OD) TRACKING PORTAL
+        <h1 className="inst-main-title">
+          SMART ATTENDANCE SEGREGATOR
         </h1>
       </div>
 
-      {/* Registration Card */}
-      <div className="exact-login-card" style={{ maxWidth: '480px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '18px' }}>
-          <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '50%', backgroundColor: '#f5f3ff', color: '#7c3aed', marginBottom: '8px' }}>
-            <UserPlus size={26} />
-          </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#190059' }}>Student Registration</h2>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>
-            Register your official VIT student credentials to track your event OD records.
-          </p>
-        </div>
+      {/* Centered Login Card Body (Image 3) */}
+      <div className="login-card-body-wrapper">
+        <div className="exact-login-card" style={{ width: '420px', maxWidth: '92vw' }}>
+          <h2 className="login-card-title">Student Registration</h2>
 
-        {errorMessage && (
-          <div className="exact-alert-box exact-alert-error" style={{ marginBottom: '14px', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+          {errorMessage && (
+            <div className="login-error-text">
+              {errorMessage}
+            </div>
+          )}
 
-        <form onSubmit={handleRegister} className="exact-login-form">
-          {/* Full Name */}
-          <div className="exact-form-group">
-            <label className="exact-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <User size={14} color="#64748b" />
-              <span>Full Name (as per VIT records)</span>
-            </label>
-            <input
-              type="text"
-              className="exact-field-input"
-              placeholder="e.g. Jane Doe"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
+          <form onSubmit={handleRegister} className="login-form-inner">
+            {/* Full Name */}
+            <div className="login-input-group">
+              <input
+                type="text"
+                className="exact-form-input"
+                placeholder="Full Name (as per VIT records)"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                autoFocus
+              />
+            </div>
 
-          {/* VIT Registration Number */}
-          <div className="exact-form-group">
-            <label className="exact-field-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <Hash size={14} color="#64748b" />
-                <span>VIT Registration Number (Primary ID)</span>
-              </span>
-              <span style={{ fontSize: '11px', color: regNo.length === 9 ? '#16a34a' : '#94a3b8' }}>
-                {regNo.length}/9 characters
-              </span>
-            </label>
-            <input
-              type="text"
-              className="exact-field-input"
-              placeholder="e.g. 22MIS0001 or 21BCE1234"
-              value={regNo}
-              onChange={handleRegNoChange}
-              style={{ textTransform: 'uppercase', fontFamily: 'monospace', fontWeight: '600' }}
-              required
-            />
-            <span style={{ fontSize: '11px', color: '#64748b', marginTop: '3px', display: 'block' }}>
-              Used to identify and query your On Duty (OD) records across all events.
-            </span>
-          </div>
+            {/* Registration Number */}
+            <div className="login-input-group">
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  className="exact-form-input"
+                  placeholder="VIT Registration Number (e.g. 24MIS0319)"
+                  value={regNo}
+                  onChange={handleRegNoChange}
+                  maxLength={9}
+                  style={{ textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '600' }}
+                  required
+                />
+                <span style={{
+                  position: 'absolute',
+                  right: '12px',
+                  top: '50%',
+                  transform: 'translateY(-50%)',
+                  fontSize: '11px',
+                  color: regNo.length === 9 ? '#16a34a' : '#9ca3af',
+                  fontWeight: regNo.length === 9 ? '700' : '500'
+                }}>
+                  {regNo.length}/9
+                </span>
+              </div>
+            </div>
 
-          {/* VIT Student Email */}
-          <div className="exact-form-group">
-            <label className="exact-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Mail size={14} color="#64748b" />
-              <span>VIT Student Email (@vitstudent.ac.in)</span>
-            </label>
-            <input
-              type="email"
-              className="exact-field-input"
-              placeholder="e.g. jane.doe2022@vitstudent.ac.in"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            <span style={{ fontSize: '11px', color: '#64748b', marginTop: '3px', display: 'block' }}>
-              External domains (Gmail, Yahoo, Outlook) are strictly rejected.
-            </span>
-          </div>
+            {/* VIT Email */}
+            <div className="login-input-group">
+              <input
+                type="email"
+                className="exact-form-input"
+                placeholder="VIT Student Email (@vitstudent.ac.in)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+              />
+            </div>
 
-          {/* Password & Confirm Password in two columns */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-            <div className="exact-form-group">
-              <label className="exact-field-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Lock size={13} color="#64748b" />
-                <span>Password</span>
-              </label>
+            {/* Password */}
+            <div className="login-input-group">
               <input
                 type="password"
-                className="exact-field-input"
-                placeholder="Min 6 chars"
+                className="exact-form-input"
+                placeholder="Password (minimum 6 characters)"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
               />
             </div>
 
-            <div className="exact-form-group">
-              <label className="exact-field-label" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <Lock size={13} color="#64748b" />
-                <span>Confirm</span>
-              </label>
+            {/* Confirm Password */}
+            <div className="login-input-group">
               <input
                 type="password"
-                className="exact-field-input"
-                placeholder="Repeat password"
+                className="exact-form-input"
+                placeholder="Confirm Password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
               />
             </div>
+
+            {/* Submit Button */}
+            <button type="submit" className="exact-btn-signin" disabled={isLoading}>
+              {isLoading ? 'Creating Student Account...' : 'Create Student Account'}
+            </button>
+          </form>
+
+          {/* Switch to Login */}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+              Already registered?
+            </p>
+            <button
+              type="button"
+              onClick={onSwitchToLogin}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                color: '#1d4ed8',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer'
+              }}
+            >
+              Sign In with VIT Student Email
+            </button>
           </div>
 
-          <button
-            type="submit"
-            className="exact-login-submit-btn"
-            disabled={isLoading}
-            style={{ width: '100%', marginTop: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          >
-            {isLoading ? (
-              <>
-                <RefreshCw size={16} className="spinning-icon" />
-                <span>Submitting Registration...</span>
-              </>
-            ) : (
-              <>
-                <span>Create Student Account</span>
-                <UserPlus size={16} />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#475569', marginBottom: '8px' }}>
-            Already have an approved student account?
-          </p>
-          <button
-            type="button"
-            onClick={onSwitchToLogin}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#2563eb',
-              fontWeight: '600',
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            Sign in with VIT Student Email
-          </button>
-        </div>
-
-        <div style={{ marginTop: '14px', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={onSwitchToAdmin}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#64748b',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <ArrowLeft size={13} />
-            <span>Switch to Staff & Admin Portal</span>
-          </button>
+          {/* Switch back to Admin */}
+          <div style={{ marginTop: '14px', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={onSwitchToAdmin}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748b',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              ← Switch to Staff & Admin Portal
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

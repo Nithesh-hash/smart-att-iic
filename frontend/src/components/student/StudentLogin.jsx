@@ -1,18 +1,25 @@
 /**
- * Student Login Component
- * Strictly authenticates VIT students via @vitstudent.ac.in credentials.
+ * Exact Institutional Student Login Screen
+ * Matches Image 3 & LoginModal.jsx:
+ * - Institutional branding (VIT + IIC logos)
+ * - Office of Innovation, Startup and Technology Transfer (VIT-IST)
+ * - SMART ATTENDANCE SEGREGATOR
+ * - Centered White Card with "Student Login", Inputs, and Deep Purple "Sign In" button
  */
 
 import React, { useState } from 'react';
-import { Mail, Lock, LogIn, ArrowLeft, AlertCircle, RefreshCw, KeyRound, CheckCircle2 } from 'lucide-react';
-import { loginStudent, sendStudentPasswordReset } from '../../services/studentAuthService';
+import {
+  loginStudent,
+  isValidVitStudentEmail,
+  sendStudentPasswordReset
+} from '../../services/studentAuthService';
 
 export default function StudentLogin({ onLoginSuccess, onSwitchToRegister, onSwitchToAdmin }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
   const [resetMessage, setResetMessage] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [isResetting, setIsResetting] = useState(false);
 
   const handleLogin = async (e) => {
@@ -21,13 +28,14 @@ export default function StudentLogin({ onLoginSuccess, onSwitchToRegister, onSwi
     setResetMessage('');
 
     const cleanEmail = email.trim().toLowerCase();
+
     if (!cleanEmail || !password.trim()) {
-      setErrorMessage('Please enter both your VIT student email and password.');
+      setErrorMessage('Please enter both VIT student email and password.');
       return;
     }
 
-    if (!cleanEmail.endsWith('@vitstudent.ac.in')) {
-      setErrorMessage('Access restricted to official VIT student email addresses (@vitstudent.ac.in). External emails are rejected.');
+    if (!isValidVitStudentEmail(cleanEmail)) {
+      setErrorMessage('Access is restricted to official VIT student email addresses (@vitstudent.ac.in).');
       return;
     }
 
@@ -81,7 +89,7 @@ export default function StudentLogin({ onLoginSuccess, onSwitchToRegister, onSwi
 
   return (
     <div className="login-page-screen">
-      {/* Top Header Banner */}
+      {/* Top Institutional Header Banner (Image 3) */}
       <div className="login-header-banner">
         <div className="logos-row-center">
           <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
@@ -90,145 +98,133 @@ export default function StudentLogin({ onLoginSuccess, onSwitchToRegister, onSwi
         <p className="inst-office-text">
           Office of Innovation, Startup and Technology Transfer (VIT-IST)
         </p>
-        <h1 className="inst-app-title">
-          STUDENT ON DUTY (OD) TRACKING PORTAL
+        <h1 className="inst-main-title">
+          SMART ATTENDANCE SEGREGATOR
         </h1>
       </div>
 
-      {/* Login Card */}
-      <div className="exact-login-card" style={{ maxWidth: '440px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'inline-flex', padding: '10px', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#1d4ed8', marginBottom: '8px' }}>
-            <LogIn size={26} />
-          </div>
-          <h2 style={{ fontSize: '20px', fontWeight: 'bold', color: '#190059' }}>Student Sign In</h2>
-          <p style={{ fontSize: '13px', color: '#64748b' }}>
-            Access verified On Duty (OD) attendance records with your VIT student account.
-          </p>
-        </div>
+      {/* Centered Login Card Body (Image 3) */}
+      <div className="login-card-body-wrapper">
+        <div className="exact-login-card">
+          <h2 className="login-card-title">Student Login</h2>
 
-        {errorMessage && (
-          <div className="exact-alert-box exact-alert-error" style={{ marginBottom: '14px', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            <AlertCircle size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span>{errorMessage}</span>
-          </div>
-        )}
+          {errorMessage && (
+            <div className="login-error-text">
+              {errorMessage}
+            </div>
+          )}
 
-        {resetMessage && (
-          <div className="exact-alert-box exact-alert-success" style={{ marginBottom: '14px', fontSize: '13px', display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
-            <CheckCircle2 size={16} style={{ flexShrink: 0, marginTop: '2px' }} />
-            <span>{resetMessage}</span>
-          </div>
-        )}
+          {resetMessage && (
+            <div style={{
+              backgroundColor: '#f0fdf4',
+              border: '1px solid #bbf7d0',
+              color: '#166534',
+              padding: '8px 12px',
+              borderRadius: '6px',
+              fontSize: '13px',
+              marginBottom: '12px',
+              textAlign: 'center'
+            }}>
+              {resetMessage}
+            </div>
+          )}
 
-        <form onSubmit={handleLogin} className="exact-login-form">
-          <div className="exact-form-group">
-            <label className="exact-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <Mail size={14} color="#64748b" />
-              <span>VIT Student Email (@vitstudent.ac.in)</span>
-            </label>
-            <input
-              type="email"
-              className="exact-field-input"
-              placeholder="e.g. firstname.lastname2022@vitstudent.ac.in"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              autoFocus
-            />
-          </div>
+          <form onSubmit={handleLogin} className="login-form-inner">
+            <div className="login-input-group">
+              <input
+                type="email"
+                className="exact-form-input"
+                placeholder="VIT Student Email (@vitstudent.ac.in)"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                autoFocus
+                required
+              />
+            </div>
 
-          <div className="exact-form-group">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <label className="exact-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
-                <Lock size={14} color="#64748b" />
-                <span>Password</span>
-              </label>
+            <div className="login-input-group">
+              <input
+                type="password"
+                className="exact-form-input"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '-6px' }}>
               <button
                 type="button"
                 onClick={handleForgotPassword}
                 disabled={isResetting}
-                style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '12px', fontWeight: '500', cursor: 'pointer', padding: 0 }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: '#2563eb',
+                  fontSize: '12px',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  padding: 0
+                }}
               >
-                {isResetting ? 'Sending...' : 'Forgot password?'}
+                {isResetting ? 'Sending link...' : 'Forgot password?'}
               </button>
             </div>
-            <input
-              type="password"
-              className="exact-field-input"
-              placeholder="Enter your student portal password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
+
+            <button type="submit" className="exact-btn-signin" disabled={isLoading}>
+              {isLoading ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+
+          {/* New student register pill */}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
+            <p style={{ fontSize: '13px', color: '#64748b', marginBottom: '8px' }}>
+              Are you a new student user?
+            </p>
+            <button
+              type="button"
+              onClick={onSwitchToRegister}
+              style={{
+                width: '100%',
+                padding: '10px 14px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '6px',
+                color: '#1d4ed8',
+                fontWeight: '600',
+                fontSize: '13px',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px'
+              }}
+            >
+              <span>🎓</span>
+              <span>Register New Student Account →</span>
+            </button>
           </div>
 
-          <button
-            type="submit"
-            className="exact-login-submit-btn"
-            disabled={isLoading}
-            style={{ width: '100%', marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
-          >
-            {isLoading ? (
-              <>
-                <RefreshCw size={16} className="spinning-icon" />
-                <span>Verifying Credentials...</span>
-              </>
-            ) : (
-              <>
-                <span>Sign In to Student Portal</span>
-                <LogIn size={16} />
-              </>
-            )}
-          </button>
-        </form>
-
-        <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: '1px solid #f1f5f9', textAlign: 'center' }}>
-          <p style={{ fontSize: '13px', color: '#475569', marginBottom: '10px' }}>
-            New student user?
-          </p>
-          <button
-            type="button"
-            onClick={onSwitchToRegister}
-            style={{
-              width: '100%',
-              padding: '10px 16px',
-              backgroundColor: '#f8fafc',
-              border: '1px solid #cbd5e1',
-              borderRadius: '6px',
-              color: '#1e293b',
-              fontWeight: '600',
-              fontSize: '13px',
-              cursor: 'pointer'
-            }}
-          >
-            Create New Student Account
-          </button>
-        </div>
-
-        {/* Switch back to Admin Portal */}
-        <div style={{ marginTop: '16px', textAlign: 'center' }}>
-          <button
-            type="button"
-            onClick={onSwitchToAdmin}
-            style={{
-              background: 'none',
-              border: 'none',
-              color: '#64748b',
-              fontSize: '12px',
-              fontWeight: '500',
-              cursor: 'pointer',
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px'
-            }}
-          >
-            <ArrowLeft size={13} />
-            <span>Switch to Staff & Admin Portal</span>
-          </button>
+          {/* Switch back to Admin Portal */}
+          <div style={{ marginTop: '14px', textAlign: 'center' }}>
+            <button
+              type="button"
+              onClick={onSwitchToAdmin}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#64748b',
+                fontSize: '12px',
+                fontWeight: '500',
+                cursor: 'pointer'
+              }}
+            >
+              ← Switch to Staff & Admin Portal
+            </button>
+          </div>
         </div>
       </div>
     </div>
   );
 }
-

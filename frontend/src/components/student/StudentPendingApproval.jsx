@@ -87,17 +87,24 @@ export default function StudentPendingApproval({ studentProfile, onStatusResolve
 
   return (
     <div className="login-page-screen">
-      {/* Top Header Banner */}
+      {/* Top Institutional Header Banner (Image 3) */}
       <div className="login-header-banner">
         <div className="logos-row-center">
           <img src="/vit-logo.png" alt="VIT Logo" className="official-vit-logo" />
           <img src="/iic-logo.png" alt="IIC Logo" className="official-iic-logo" />
         </div>
-        <p className="inst-office-text">Office of Innovation, Startup and Technology Transfer (VIT-IST)</p>
-        <h1 className="inst-app-title">STUDENT ON DUTY (OD) TRACKING PORTAL</h1>
+        <p className="inst-office-text">
+          Office of Innovation, Startup and Technology Transfer (VIT-IST)
+        </p>
+        <h1 className="inst-main-title">
+          SMART ATTENDANCE SEGREGATOR
+        </h1>
       </div>
 
-      <div className="exact-login-card" style={{ maxWidth: '520px' }}>
+      {/* Centered Login Card Body (Image 3) */}
+      <div className="login-card-body-wrapper">
+        <div className="exact-login-card" style={{ width: '480px', maxWidth: '92vw' }}>
+          <h2 className="login-card-title">Approval Status</h2>
         {/* Student Credential Header */}
         <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '16px', marginBottom: '20px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
@@ -290,6 +297,7 @@ export default function StudentPendingApproval({ studentProfile, onStatusResolve
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
 
