@@ -10,13 +10,30 @@ import ExcelJS from 'exceljs';
 import JSZip from 'jszip';
 import { getSchoolMappings } from './dataService';
 
+const MONTH_ABBREVS = new Set(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']);
+const COURSE_PREFIXES = new Set(['MAT', 'PHY', 'CHY', 'CHE', 'ENG', 'HUM', 'MTH', 'CHM', 'STS', 'EXC', 'FLC', 'ESP', 'FRE', 'GER', 'JAP', 'CSE', 'ECE', 'EEE']);
+
 /**
- * Validates 9-character registration number (e.g. 21BCE1234)
+ * Validates 9-character registration number (e.g. 21BCE1234, 24MIS0319)
+ * Strictly excludes dates (e.g. 15OCT2026, 09NOV2026) and course codes (e.g. 21MAT1001)
  */
-export function isValidRegNo(val) {
+export function isValidRegNo(val, validBranchesSet = null) {
   if (!val) return false;
   const str = String(val).trim().toUpperCase();
-  return /^\d{2}[A-Z]{3}\d{4}$/.test(str);
+  if (!/^\d{2}[A-Z]{3}\d{4}$/.test(str)) return false;
+
+  const branch = str.substring(2, 5);
+  if (MONTH_ABBREVS.has(branch)) return false;
+  if (COURSE_PREFIXES.has(branch)) return false;
+
+  const yr = parseInt(str.substring(0, 2), 10);
+  if (isNaN(yr) || yr < 16 || yr > 28) return false;
+
+  if (validBranchesSet && validBranchesSet.size > 0) {
+    return validBranchesSet.has(branch);
+  }
+
+  return true;
 }
 
 /**
@@ -67,38 +84,79 @@ function roundTimeToNextHour(piece) {
 /**
  * Parse an Excel or CSV file using SheetJS
  * Extracts all unique 9-character registration numbers found across all sheets
+ * Strictly excludes dates and course codes; never fabricates dummy students.
  */
-export async function parseAttendanceFileSheetJS(file) {
+export async function parseAttendanceFileSheetJS(file, customValidBranches = null) {
   const arrayBuffer = await file.arrayBuffer();
   const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+  // Prepare valid branches set
+  let validBranches = customValidBranches;
+  if (!validBranches) {
+    validBranches = new Set();
+    const mappings = getSchoolMappings();
+    for (const branches of Object.values(mappings)) {
+      if (Array.isArray(branches)) {
+        branches.forEach(b => validBranches.add(b.toUpperCase()));
+      }
+    }
+  }
 
   const foundRegs = new Set();
   let totalRowsRead = 0;
 
   for (const sheetName of workbook.SheetNames) {
     const sheet = workbook.Sheets[sheetName];
+    if (!sheet) continue;
+
     // Convert to JSON array of row arrays
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-    for (const row of rows) {
+    // 1. Scan the first 5 rows to identify the Registration Number column index
+    let regColIdx = -1;
+    for (let rIdx = 0; rIdx < Math.min(rows.length, 5); rIdx++) {
+      const row = rows[rIdx];
+      if (!Array.isArray(row)) continue;
+      for (let cIdx = 0; cIdx < row.length; cIdx++) {
+        const headerStr = String(row[cIdx] || '').trim().toLowerCase();
+        if (/^(reg|roll|urn|registration|register)[\s_.]*(no|num|number)?$/i.test(headerStr) ||
+            /^(student\s*(id|reg|registration))$/i.test(headerStr)) {
+          regColIdx = cIdx;
+          break;
+        }
+      }
+      if (regColIdx !== -1) break;
+    }
+
+    for (let rIdx = 0; rIdx < rows.length; rIdx++) {
+      const row = rows[rIdx];
       if (!Array.isArray(row)) continue;
       totalRowsRead++;
+
+      // If dedicated column found, check it first
+      if (regColIdx !== -1 && row[regColIdx] !== undefined) {
+        const cellVal = String(row[regColIdx]).trim().toUpperCase();
+        if (isValidRegNo(cellVal, validBranches)) {
+          foundRegs.add(cellVal);
+          continue;
+        }
+      }
+
+      // Check all cells with strict validation
       for (const cell of row) {
         if (cell !== undefined && cell !== null) {
           const str = String(cell).trim().toUpperCase();
           const matches = str.match(/\b\d{2}[A-Z]{3}\d{4}\b/g);
           if (matches) {
-            matches.forEach(m => foundRegs.add(m));
+            matches.forEach(m => {
+              if (isValidRegNo(m, validBranches)) {
+                foundRegs.add(m);
+              }
+            });
           }
         }
       }
     }
-  }
-
-  // Graceful fallback if sheet has non-standard student format
-  if (foundRegs.size === 0) {
-    foundRegs.add('21BCE1001');
-    foundRegs.add('21BCE1002');
   }
 
   return {
@@ -153,8 +211,9 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
 
       // Extract all student registration numbers for this day
       const dayRegsSet = new Set();
+      const validBranchesSet = new Set(branchToSchool.keys());
       for (const file of filesForDay) {
-        const parsed = await parseAttendanceFileSheetJS(file);
+        const parsed = await parseAttendanceFileSheetJS(file, validBranchesSet);
         parsed.uniqueStudents.forEach(r => dayRegsSet.add(r));
       }
 
@@ -363,6 +422,18 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
   const timeTag = now.toTimeString().split(' ')[0].replace(/:/g, '');
   const zipFileName = `all_schools_${dateTag}_${timeTag}.zip`;
 
+  // Persistent structure for reconstruction in Segregation History across devices
+  const studentsBySchool = {};
+  const allUniqueRegs = new Set();
+  for (const [sch, blocks] of schoolsMap.entries()) {
+    studentsBySchool[sch] = blocks;
+    blocks.forEach(b => {
+      b.branches?.forEach(br => {
+        br.students?.forEach(s => allUniqueRegs.add(s));
+      });
+    });
+  }
+
   return {
     blob: zipBlob,
     zipName: zipFileName,
@@ -371,6 +442,8 @@ export async function processMultiEventBatch(eventSlots, customMappings = null) 
     schoolFiles: generatedSchoolFiles,
     schoolsCount: schoolsMap.size,
     schoolBreakdown,
+    studentsBySchool,
+    allStudents: Array.from(allUniqueRegs),
     totalStudents: grandTotalStudents,
     totalFiles: totalFilesProcessed,
     eventsCount: eventSlots.length

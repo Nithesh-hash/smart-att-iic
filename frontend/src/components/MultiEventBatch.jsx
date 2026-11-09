@@ -224,6 +224,8 @@ export default function MultiEventBatch() {
           totalStudents: Number(result.totalStudents) || 0,
           schoolsRepresented: Number(result.schoolsCount) || 0,
           schoolBreakdown: result.schoolBreakdown || {},
+          studentsBySchool: result.studentsBySchool || {},
+          allStudents: result.allStudents || [],
           filesCount: Number(result.totalFiles) || 1,
           timestamp: new Date().toISOString()
         });

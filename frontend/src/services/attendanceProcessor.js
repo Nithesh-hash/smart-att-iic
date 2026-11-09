@@ -284,10 +284,26 @@ export function extractEventMetadata(cellsOrText, filename = '') {
   };
 }
 
-export function isValidRegNo(value) {
+const MONTH_ABBREVS = new Set(['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC']);
+const COURSE_PREFIXES = new Set(['MAT', 'PHY', 'CHY', 'CHE', 'ENG', 'HUM', 'MTH', 'CHM', 'STS', 'EXC', 'FLC', 'ESP', 'FRE', 'GER', 'JAP', 'CSE', 'ECE', 'EEE']);
+
+export function isValidRegNo(value, validBranchesSet = null) {
   if (value === null || value === undefined) return false;
   const str = String(value).trim().toUpperCase();
-  return /^\d{2}[A-Z]{3}\d{4}$/.test(str);
+  if (!/^\d{2}[A-Z]{3}\d{4}$/.test(str)) return false;
+
+  const branch = str.substring(2, 5);
+  if (MONTH_ABBREVS.has(branch)) return false;
+  if (COURSE_PREFIXES.has(branch)) return false;
+
+  const yr = parseInt(str.substring(0, 2), 10);
+  if (isNaN(yr) || yr < 16 || yr > 28) return false;
+
+  if (validBranchesSet && validBranchesSet.size > 0) {
+    return validBranchesSet.has(branch);
+  }
+
+  return true;
 }
 
 export function buildBranchToSchoolMap(customMappings = null) {
